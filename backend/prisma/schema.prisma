@@ -1,0 +1,271 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum EstadoConvocatoria {
+  ABIERTA
+  CERRADA
+  EN_RANKING
+  ASIGNADA
+}
+
+enum TipoPropuesta {
+  SERVICIO
+  INVESTIGACION
+}
+
+enum EstadoPropuesta {
+  BORRADOR
+  PUBLICADA
+}
+
+enum EstadoCarga {
+  PENDIENTE
+  PROCESANDO
+  COMPLETADA
+  ERROR
+}
+
+enum EstadoCorrida {
+  EN_CURSO
+  COMPLETADA
+  INVALIDADA
+}
+
+enum EstadoAsignacion {
+  ASIGNADO
+  NO_ASIGNADO
+}
+
+// ─── Convocatoria ─────────────────────────────────────────────────────────────
+
+model Convocatoria {
+  id            String               @id @default(uuid())
+  nombre        String
+  fechaApertura DateTime             @map("fecha_apertura")
+  fechaCierre   DateTime             @map("fecha_cierre")
+  estado        EstadoConvocatoria   @default(ABIERTA)
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  rankingConfig    RankingConfig?
+  propuestas       Propuesta[]
+  cargas           CargaPlanilla[]
+  padron           PadronAcademico[]
+  postulaciones    Postulacion[]
+  corridas         CorridaAsignacion[]
+  resultadosRanking ResultadoRanking[]
+
+  @@map("convocatorias")
+}
+
+// ─── Propuesta ────────────────────────────────────────────────────────────────
+
+model Propuesta {
+  id                 String          @id @default(uuid())
+  idExterno          String          @unique @map("id_externo")
+  titulo             String
+  tipo               TipoPropuesta
+  responsableNombre  String          @map("responsable_nombre")
+  responsableEmail   String          @map("responsable_email")
+  vacantesTotal      Int             @map("vacantes_total")
+  vacantesDisponibles Int            @map("vacantes_disponibles")
+  dependencia        String?
+  especialidades     String?         // códigos separados por coma
+  periodo            String?
+  horario            String?
+  objetivo           String?         @db.Text
+  tareas             String?         @db.Text
+  observaciones      String?         @db.Text
+  reqRegularizadas   String?         @map("req_regularizadas")
+  reqAprobadas       String?         @map("req_aprobadas")
+  reqOtros           String?         @map("req_otros")
+  modulos            Int             @default(1)
+  estado             EstadoPropuesta @default(BORRADOR)
+  convocatoriaId     String          @map("convocatoria_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  convocatoria   Convocatoria       @relation(fields: [convocatoriaId], references: [id])
+  postulaciones  Postulacion[]
+  asignaciones   ResultadoAsignacion[]
+  vacanteAuditoria VacanteAuditoria[]
+
+  @@map("propuestas")
+}
+
+model VacanteAuditoria {
+  id             String    @id @default(uuid())
+  propuestaId    String    @map("propuesta_id")
+  valorAnterior  Int       @map("valor_anterior")
+  valorNuevo     Int       @map("valor_nuevo")
+  fecha          DateTime  @default(now())
+
+  propuesta Propuesta @relation(fields: [propuestaId], references: [id])
+
+  @@map("vacante_auditoria")
+}
+
+// ─── Padrón Académico ─────────────────────────────────────────────────────────
+
+model PadronAcademico {
+  id                  String   @id @default(uuid())
+  dni                 String
+  legajo              String
+  nombreCompleto      String   @map("nombre_completo")
+  especialidadCodigo  Int?     @map("especialidad_codigo")
+  plan                Int?
+  anioIngreso         Int?     @map("anio_ingreso")
+  regularizadas       Int      @default(0)
+  cursando            Int      @default(0)
+  aprobadas           Int      @default(0)
+  promedio            Decimal  @db.Decimal(5, 2)
+  aplazos             Int      @default(0)
+  estado              String   @default("Activo") // Activo, Graduado, etc.
+  convocatoriaId      String   @map("convocatoria_id")
+
+  convocatoria      Convocatoria        @relation(fields: [convocatoriaId], references: [id])
+  postulaciones     Postulacion[]
+  resultadoRanking  ResultadoRanking[]
+  resultadoAsignacion ResultadoAsignacion[]
+
+  @@unique([dni, convocatoriaId])
+  @@index([dni])
+  @@index([legajo])
+  @@map("padron_academico")
+}
+
+// ─── Ranking Config ───────────────────────────────────────────────────────────
+
+model RankingConfig {
+  id                  String   @id @default(uuid())
+  version             Int      @default(1)
+  nombre              String   @default("RankingV1")
+  tipo                String   @default("SERVICIO")
+  minMateriasCursando Int      @default(3) @map("min_materias_cursando")
+  minRegularizadas    Int      @default(1) @map("min_regularizadas")
+  criterioDesempate   String   @default("PROMEDIO") @map("criterio_desempate")
+  convocatoriaId      String   @unique @map("convocatoria_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  convocatoria    Convocatoria      @relation(fields: [convocatoriaId], references: [id])
+  resultadosRanking ResultadoRanking[]
+
+  @@map("ranking_config")
+}
+
+// ─── Carga Planilla ───────────────────────────────────────────────────────────
+
+model CargaPlanilla {
+  id                   String      @id @default(uuid())
+  convocatoriaId       String      @map("convocatoria_id")
+  filename             String
+  storagePath          String      @map("storage_path")
+  estado               EstadoCarga @default(PENDIENTE)
+  filasTotal           Int         @default(0) @map("filas_total")
+  filasValidas         Int         @default(0) @map("filas_validas")
+  filasError           Int         @default(0) @map("filas_error")
+  filasAdvertencia     Int         @default(0) @map("filas_advertencia")
+  reporteErrores       Json?       @map("reporte_errores")
+  reporteAdvertencias  Json?       @map("reporte_advertencias")
+  vigente              Boolean     @default(false)
+  createdAt            DateTime    @default(now()) @map("created_at")
+
+  convocatoria  Convocatoria   @relation(fields: [convocatoriaId], references: [id])
+  postulaciones Postulacion[]
+
+  @@map("carga_planillas")
+}
+
+// ─── Postulacion ──────────────────────────────────────────────────────────────
+
+model Postulacion {
+  id              String   @id @default(uuid())
+  padronId        String   @map("padron_id")
+  propuestaId     String   @map("propuesta_id")
+  convocatoriaId  String   @map("convocatoria_id")
+  cargaPlanillaId String   @map("carga_planilla_id")
+  ordenPreferencia Int     @map("orden_preferencia")
+
+  padron        PadronAcademico @relation(fields: [padronId], references: [id])
+  propuesta     Propuesta       @relation(fields: [propuestaId], references: [id])
+  convocatoria  Convocatoria    @relation(fields: [convocatoriaId], references: [id])
+  cargaPlanilla CargaPlanilla   @relation(fields: [cargaPlanillaId], references: [id])
+
+  @@unique([padronId, convocatoriaId, ordenPreferencia])
+  @@map("postulaciones")
+}
+
+// ─── Resultado Ranking ────────────────────────────────────────────────────────
+
+model ResultadoRanking {
+  id                   String   @id @default(uuid())
+  padronId             String   @map("padron_id")
+  convocatoriaId       String   @map("convocatoria_id")
+  rankingConfigId      String   @map("ranking_config_id")
+  posicion             Int?
+  puntajeTotal         Decimal  @default(0) @map("puntaje_total") @db.Decimal(8, 4)
+  terminoPromedio      Decimal  @default(0) @map("termino_promedio") @db.Decimal(8, 4)
+  terminoAprobadas     Decimal  @default(0) @map("termino_aprobadas") @db.Decimal(8, 4)
+  terminoAvance        Decimal  @default(0) @map("termino_avance") @db.Decimal(8, 4)
+  terminoAplazos       Decimal  @default(0) @map("termino_aplazos") @db.Decimal(8, 4)
+  // antecedentes: PENDIENTE DE IMPLEMENTACION - ignorado hasta confirmar fuente del dato
+  bonusAntecedentes    Decimal  @default(0) @map("bonus_antecedentes") @db.Decimal(8, 4)
+  habilitado           Boolean  @default(true)
+  motivoInhabilitacion String?  @map("motivo_inhabilitacion")
+  criterioDesempateVal Decimal? @map("criterio_desempate_val") @db.Decimal(8, 4)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  padron        PadronAcademico @relation(fields: [padronId], references: [id])
+  convocatoria  Convocatoria    @relation(fields: [convocatoriaId], references: [id])
+  rankingConfig RankingConfig   @relation(fields: [rankingConfigId], references: [id])
+
+  @@unique([padronId, convocatoriaId])
+  @@map("resultados_ranking")
+}
+
+// ─── Corrida Asignacion ───────────────────────────────────────────────────────
+
+model CorridaAsignacion {
+  id                String        @id @default(uuid())
+  convocatoriaId    String        @map("convocatoria_id")
+  estado            EstadoCorrida @default(EN_CURSO)
+  totalPostulantes  Int           @default(0) @map("total_postulantes")
+  totalAsignados    Int           @default(0) @map("total_asignados")
+  totalNoAsignados  Int           @default(0) @map("total_no_asignados")
+  vigente           Boolean       @default(false)
+  startedAt         DateTime      @default(now()) @map("started_at")
+  finishedAt        DateTime?     @map("finished_at")
+
+  convocatoria Convocatoria          @relation(fields: [convocatoriaId], references: [id])
+  resultados   ResultadoAsignacion[]
+
+  @@map("corridas_asignacion")
+}
+
+// ─── Resultado Asignacion ─────────────────────────────────────────────────────
+
+model ResultadoAsignacion {
+  id                    String           @id @default(uuid())
+  corridaId             String           @map("corrida_id")
+  padronId              String           @map("padron_id")
+  propuestaId           String?          @map("propuesta_id")
+  preferenciaSatisfecha Int?             @map("preferencia_satisfecha")
+  estado                EstadoAsignacion
+
+  corrida   CorridaAsignacion @relation(fields: [corridaId], references: [id])
+  padron    PadronAcademico   @relation(fields: [padronId], references: [id])
+  propuesta Propuesta?        @relation(fields: [propuestaId], references: [id])
+
+  @@unique([corridaId, padronId])
+  @@map("resultados_asignacion")
+}
