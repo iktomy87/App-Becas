@@ -1,0 +1,80 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PrismaService } from '../prisma/prisma.service';
+export declare class AsignacionEngineService {
+    private readonly prisma;
+    private readonly events;
+    constructor(prisma: PrismaService, events: EventEmitter2);
+    ejecutar(convocatoriaId: string): Promise<{
+        corridaId: string;
+        asignados: number;
+        noAsignados: number;
+    }>;
+    getResultados(convocatoriaId: string, page?: number, limit?: number): import(".prisma/client").Prisma.Prisma__CorridaAsignacionClient<{
+        resultados: ({
+            propuesta: {
+                idExterno: string;
+                titulo: string;
+            };
+            padron: {
+                legajo: string;
+                dni: string;
+                nombreCompleto: string;
+            };
+        } & {
+            estado: import(".prisma/client").$Enums.EstadoAsignacion;
+            id: string;
+            propuestaId: string | null;
+            padronId: string;
+            preferenciaSatisfecha: number | null;
+            corridaId: string;
+        })[];
+    } & {
+        estado: import(".prisma/client").$Enums.EstadoCorrida;
+        id: string;
+        convocatoriaId: string;
+        vigente: boolean;
+        totalPostulantes: number;
+        totalAsignados: number;
+        totalNoAsignados: number;
+        startedAt: Date;
+        finishedAt: Date | null;
+    }, null, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+    getResultadoPorDni(convocatoriaId: string, dni: string): import(".prisma/client").Prisma.Prisma__ResultadoAsignacionClient<{
+        propuesta: {
+            estado: import(".prisma/client").$Enums.EstadoPropuesta;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            convocatoriaId: string;
+            tipo: import(".prisma/client").$Enums.TipoPropuesta;
+            idExterno: string;
+            titulo: string;
+            responsableNombre: string;
+            responsableEmail: string;
+            vacantesTotal: number;
+            dependencia: string | null;
+            especialidades: string | null;
+            periodo: string | null;
+            horario: string | null;
+            objetivo: string | null;
+            tareas: string | null;
+            observaciones: string | null;
+            reqRegularizadas: string | null;
+            reqAprobadas: string | null;
+            reqOtros: string | null;
+            modulos: number;
+            vacantesDisponibles: number;
+        };
+        padron: {
+            dni: string;
+            nombreCompleto: string;
+        };
+    } & {
+        estado: import(".prisma/client").$Enums.EstadoAsignacion;
+        id: string;
+        propuestaId: string | null;
+        padronId: string;
+        preferenciaSatisfecha: number | null;
+        corridaId: string;
+    }, null, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+}

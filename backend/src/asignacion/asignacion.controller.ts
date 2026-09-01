@@ -26,7 +26,9 @@ export class AsignacionController {
   }
 
   @Get('estudiante/:dni')
-  @ApiOperation({ summary: 'Consultar resultado de asignación por DNI (RF-19)' })
+  @ApiOperation({
+    summary: 'Consultar resultado de asignación por DNI (RF-19)',
+  })
   getResultadoPorDni(
     @Param('convocatoriaId') convocatoriaId: string,
     @Param('dni') dni: string,

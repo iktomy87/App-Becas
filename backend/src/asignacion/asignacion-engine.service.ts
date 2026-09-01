@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
-import { EstadoAsignacion, EstadoConvocatoria } from '@prisma/client';
+import {
+  EstadoAsignacion,
+  EstadoConvocatoria,
+  EstadoCorrida,
+} from '@prisma/client';
 
 @Injectable()
 export class AsignacionEngineService {
@@ -10,16 +14,18 @@ export class AsignacionEngineService {
     private readonly events: EventEmitter2,
   ) {}
 
-  async ejecutar(convocatoriaId: string): Promise<{ corridaId: string; asignados: number; noAsignados: number }> {
+  async ejecutar(
+    convocatoriaId: string,
+  ): Promise<{ corridaId: string; asignados: number; noAsignados: number }> {
     // Invalidar corrida anterior si existe
     await this.prisma.corridaAsignacion.updateMany({
       where: { convocatoriaId, vigente: true },
-      data: { estado: 'INVALIDADA', vigente: false },
+      data: { estado: EstadoCorrida.INVALIDADA, vigente: false },
     });
 
     // Nueva corrida
     const corrida = await this.prisma.corridaAsignacion.create({
-      data: { convocatoriaId, estado: 'EN_CURSO', vigente: true },
+      data: { convocatoriaId, estado: EstadoCorrida.EN_CURSO, vigente: true },
     });
 
     // Ranking habilitado ordenado por posición (RF-16, RN-05)
@@ -75,7 +81,11 @@ export class AsignacionEngineService {
               estado: EstadoAsignacion.ASIGNADO,
             },
           });
-          this.events.emit('asignacion.estudiante_asignado', { padronId: padron.id, propuestaId: propuesta.id, corridaId: corrida.id });
+          this.events.emit('asignacion.estudiante_asignado', {
+            padronId: padron.id,
+            propuestaId: propuesta.id,
+            corridaId: corrida.id,
+          });
           asignados++;
           asignado = true;
           break;
@@ -90,18 +100,35 @@ export class AsignacionEngineService {
             estado: EstadoAsignacion.NO_ASIGNADO,
           },
         });
-        this.events.emit('asignacion.estudiante_no_asignado', { padronId: padron.id, corridaId: corrida.id });
+        this.events.emit('asignacion.estudiante_no_asignado', {
+          padronId: padron.id,
+          corridaId: corrida.id,
+        });
         noAsignados++;
       }
     }
 
     await this.prisma.corridaAsignacion.update({
       where: { id: corrida.id },
-      data: { estado: 'COMPLETADA', totalPostulantes: ranking.length, totalAsignados: asignados, totalNoAsignados: noAsignados, finishedAt: new Date() },
+      data: {
+        estado: EstadoCorrida.COMPLETADA,
+        totalPostulantes: ranking.length,
+        totalAsignados: asignados,
+        totalNoAsignados: noAsignados,
+        finishedAt: new Date(),
+      },
     });
-    await this.prisma.convocatoria.update({ where: { id: convocatoriaId }, data: { estado: EstadoConvocatoria.ASIGNADA } });
+    await this.prisma.convocatoria.update({
+      where: { id: convocatoriaId },
+      data: { estado: EstadoConvocatoria.ASIGNADA },
+    });
 
-    this.events.emit('asignacion.finalizada', { convocatoriaId, corridaId: corrida.id, asignados, noAsignados });
+    this.events.emit('asignacion.finalizada', {
+      convocatoriaId,
+      corridaId: corrida.id,
+      asignados,
+      noAsignados,
+    });
 
     return { corridaId: corrida.id, asignados, noAsignados };
   }
@@ -114,7 +141,9 @@ export class AsignacionEngineService {
           skip: (page - 1) * limit,
           take: limit,
           include: {
-            padron: { select: { dni: true, legajo: true, nombreCompleto: true } },
+            padron: {
+              select: { dni: true, legajo: true, nombreCompleto: true },
+            },
             propuesta: { select: { idExterno: true, titulo: true } },
           },
           orderBy: { estado: 'asc' },
@@ -126,7 +155,10 @@ export class AsignacionEngineService {
   getResultadoPorDni(convocatoriaId: string, dni: string) {
     return this.prisma.resultadoAsignacion.findFirst({
       where: { corrida: { convocatoriaId, vigente: true }, padron: { dni } },
-      include: { propuesta: true, padron: { select: { nombreCompleto: true, dni: true } } },
+      include: {
+        propuesta: true,
+        padron: { select: { nombreCompleto: true, dni: true } },
+      },
     });
   }
 }
