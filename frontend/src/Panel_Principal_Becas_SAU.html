@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Becas SAU — Panel principal</title>
+<style>
+  :root{
+    --orange:#F58634;
+    --green-bg:#6DA38A;
+    --border:#D9D9D9;
+    --header-bg:#FBFBFB;
+    --text:#2b2b2b;
+    --text-muted:#8a8a8a;
+    --bg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+  }
+  a{text-decoration:none;color:inherit;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 40px;
+  }
+  .brand{display:flex;align-items:center;}
+  .brand-mark{
+    width:52px;height:52px;border-radius:50%;
+    border:1px solid #cfcfcf;
+    display:flex;align-items:center;justify-content:center;
+    margin-right:14px;
+  }
+  .brand-mark svg{width:30px;height:30px;}
+  .brand-text{line-height:1.25;}
+  .brand-text .t0{font-size:9px;color:#9a9a9a;letter-spacing:.2px;}
+  .brand-text .t1{font-size:16px;font-weight:800;letter-spacing:.3px;color:#1a1a1a;}
+
+  .nav{display:flex;align-items:center;}
+  .nav a{font-size:15px;color:#3b3b3b;padding-bottom:22px;margin-left:40px;}
+  .nav a:first-child{margin-left:0;}
+  .nav a.active{color:#1a1a1a;font-weight:600;border-bottom:2px solid var(--orange);}
+
+  .topbar-divider{height:1px;background:#eee;}
+
+  /* ---------- Page ---------- */
+  .content{padding:30px 40px 60px;}
+
+  .page-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:20px;
+  }
+  .page-title{font-size:34px;font-weight:800;margin:0;color:#1a1a1a;}
+
+  .btn{
+    display:inline-flex;align-items:center;
+    font-size:13.5px;font-weight:600;
+    padding:10px 18px;border-radius:20px;
+    cursor:pointer;border:1px solid transparent;
+  }
+  .btn .ic{font-size:13px;line-height:1;margin-right:8px;}
+  .btn.solid{background:var(--orange);color:#fff;border-color:var(--orange);}
+  .btn.outline{background:#fff;color:var(--orange);border-color:var(--orange);}
+
+  .conv-row{display:flex;align-items:center;margin-bottom:22px;}
+  .conv-row .conv-label{font-size:16px;color:#3b3b3b;margin-right:14px;}
+  .badge{
+    font-size:12px;font-weight:600;color:#fff;
+    background:var(--green-bg);
+    padding:4px 14px;border-radius:14px;
+  }
+
+  .divider-orange{height:3px;background:var(--orange);margin-bottom:26px;}
+
+  /* ---------- Layout dos columnas ---------- */
+  .layout{display:flex;align-items:flex-start;}
+  .col-main{flex:1;min-width:0;margin-right:24px;}
+  .col-side{width:300px;flex-shrink:0;}
+
+  /* ---------- Tabla principal ---------- */
+  table{width:100%;border-collapse:collapse;border:1px solid var(--border);}
+  thead th{
+    text-align:left;font-weight:400;font-size:14px;
+    color:#8a8a8a;
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border);
+    background:var(--header-bg);
+  }
+  thead th:last-child{border-right:none;}
+  tbody td{
+    padding:16px 18px;font-size:14px;color:#2b2b2b;
+    border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border);
+    vertical-align:top;
+    height:32px;
+  }
+  tbody td:last-child{border-right:none;}
+  tbody tr:last-child td{border-bottom:none;}
+
+  .stud-name{font-weight:700;color:#1a1a1a;font-size:14.5px;}
+  .stud-sub{font-size:12px;color:var(--text-muted);margin-top:4px;}
+
+  .factor-val{font-weight:700;color:#1a1a1a;}
+
+  .prio-row{display:flex;align-items:center;justify-content:space-between;}
+  .prio-list{font-size:13px;color:#3b3b3b;line-height:1.7;}
+
+  .btn-mini{
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;color:var(--orange);
+    background:#fff;border:1px solid var(--orange);
+    border-radius:18px;padding:9px 20px;
+    white-space:nowrap;margin-left:16px;
+  }
+
+  .row-empty td{height:96px;}
+
+  /* ---------- Tarjetas laterales ---------- */
+  .stat-card{
+    border:1px solid var(--border);border-radius:6px;
+    padding:16px 18px;margin-bottom:20px;
+  }
+  .stat-label{font-size:13.5px;color:#3b3b3b;margin-bottom:8px;}
+  .stat-value{font-size:30px;font-weight:800;color:var(--orange);line-height:1;}
+  .stat-sub{font-size:12.5px;color:var(--text-muted);margin-top:8px;}
+
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" stroke-width="6" stroke-linecap="round">
+            <path d="M32 32 L32 10" stroke="#e2574c"/>
+            <path d="M32 32 L50 20" stroke="#f2a53c"/>
+            <path d="M32 32 L52 40" stroke="#3fae6b"/>
+            <path d="M32 32 L44 54" stroke="#3f8fd6"/>
+            <path d="M32 32 L18 50" stroke="#8e5cc8"/>
+            <path d="M32 32 L12 28" stroke="#e2574c"/>
+          </g>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="t0">Secretaría de Asuntos Universitarios</div>
+        <div class="t1">BECAS SAU</div>
+      </div>
+    </div>
+    <div class="nav">
+      <a href="#" class="active">Inicio</a>
+      <a href="#">Inscripciones</a>
+      <a href="#">Ranking</a>
+    </div>
+  </div>
+  <div class="topbar-divider"></div>
+
+  <div class="content">
+
+    <div class="page-head">
+      <h1 class="page-title">Panel principal</h1>
+      <div class="btn solid"><span class="ic">⭱</span> Cargar planilla</div>
+    </div>
+
+    <div class="conv-row">
+      <span class="conv-label">Convocatoria 202x - Carga de postulaciones hasta el: xx/xx/202x</span>
+      <span class="badge">Activo</span>
+    </div>
+
+    <div class="divider-orange"></div>
+
+    <div class="layout">
+
+      <div class="col-main">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px;">Pos.</th>
+              <th style="width:230px;">Estudiante</th>
+              <th style="width:110px;">Carrera</th>
+              <th style="width:110px;">Promedio</th>
+              <th style="width:90px;">Factor</th>
+              <th>Prioridades</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>
+                <div class="stud-name">Brizuela Silvestri, Yoel Elián</div>
+                <div class="stud-sub">DNI 44154651 - Leg. 27055</div>
+              </td>
+              <td>ISI</td>
+              <td>7,81</td>
+              <td class="factor-val">17,30</td>
+              <td>
+                <div class="prio-row">
+                  <div class="prio-list">
+                    1° - 112618324505568<br>
+                    2° - 1105121314338064<br>
+                    3° - 1112121953573970<br>
+                    4° - 1128111635975267<br>
+                    5° - 1125100938631176
+                  </div>
+                  <div class="btn-mini">Ver ficha</div>
+                </div>
+              </td>
+            </tr>
+            <tr class="row-empty">
+              <td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr class="row-empty">
+              <td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="col-side">
+        <div class="stat-card">
+          <div class="stat-label">Solicitudes publicadas</div>
+          <div class="stat-value">18</div>
+          <div class="stat-sub">4 pendientes de vacantes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Vacantes totales</div>
+          <div class="stat-value">20</div>
+          <div class="stat-sub">Investigación 10 - Servicio 10</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Postulaciones cargadas</div>
+          <div class="stat-value">200</div>
+          <div class="stat-sub">Última carga: hoy 09:14</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

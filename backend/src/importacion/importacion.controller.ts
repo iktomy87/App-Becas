@@ -32,6 +32,12 @@ export class ImportacionController {
     return this.service.listarCargas(convocatoriaId);
   }
 
+  @Get('inscripciones')
+  @ApiOperation({ summary: 'Obtener inscripciones de la convocatoria' })
+  getInscripciones(@Param('convocatoriaId') convocatoriaId: string) {
+    return this.service.getInscripciones(convocatoriaId);
+  }
+
   @Get(':cargaId')
   @ApiOperation({ summary: 'Consultar estado y resultado de una carga (RF-09)' })
   getCarga(@Param('cargaId') cargaId: string) {

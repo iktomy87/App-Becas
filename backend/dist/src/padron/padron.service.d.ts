@@ -3,8 +3,8 @@ export declare class PadronService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     findByDni(dni: string, convocatoriaId: string): Promise<{
-        estado: string;
         id: string;
+        estado: string;
         convocatoriaId: string;
         especialidadCodigo: number | null;
         plan: number | null;
@@ -19,8 +19,8 @@ export declare class PadronService {
         aplazos: number;
     }>;
     findByLegajo(legajo: string, convocatoriaId: string): Promise<{
-        estado: string;
         id: string;
+        estado: string;
         convocatoriaId: string;
         especialidadCodigo: number | null;
         plan: number | null;

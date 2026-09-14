@@ -29,6 +29,9 @@ let ImportacionController = class ImportacionController {
     listar(convocatoriaId) {
         return this.service.listarCargas(convocatoriaId);
     }
+    getInscripciones(convocatoriaId) {
+        return this.service.getInscripciones(convocatoriaId);
+    }
     getCarga(cargaId) {
         return this.service.getCarga(cargaId);
     }
@@ -58,6 +61,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ImportacionController.prototype, "listar", null);
+__decorate([
+    (0, common_1.Get)('inscripciones'),
+    (0, swagger_1.ApiOperation)({ summary: 'Obtener inscripciones de la convocatoria' }),
+    __param(0, (0, common_1.Param)('convocatoriaId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ImportacionController.prototype, "getInscripciones", null);
 __decorate([
     (0, common_1.Get)(':cargaId'),
     (0, swagger_1.ApiOperation)({ summary: 'Consultar estado y resultado de una carga (RF-09)' }),

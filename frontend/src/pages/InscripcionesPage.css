@@ -1,0 +1,186 @@
+.inscripciones-page {
+  /* Layout handled by .content from PanelPrincipal.css */
+}
+
+.inscripciones-page .loading-text {
+  color: var(--text-muted);
+}
+.inscripciones-page .error-text {
+  color: #e2574c;
+}
+
+.inscripciones-page .page-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.inscripciones-page h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.inscripciones-page .title-divider {
+  height: 3px;
+  background: var(--orange);
+  border-radius: 2px;
+  margin-bottom: 20px;
+}
+
+.inscripciones-page .convocatoria-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.inscripciones-page .convocatoria-row h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+}
+.inscripciones-page .badge-active {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 999px;
+}
+.inscripciones-page .updated {
+  color: var(--text-gray);
+  font-size: 13px;
+  margin: 0 0 20px 0;
+}
+
+/* Filters */
+.inscripciones-page .filters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.inscripciones-page .filters input[type="text"] {
+  flex: 1;
+  max-width: 340px;
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 13px;
+  color: var(--text-dark);
+  background: #fff;
+}
+.inscripciones-page .filters input::placeholder {
+  color: #b0b4ba;
+}
+.inscripciones-page .select-like {
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 13px;
+  background: #fff;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+.inscripciones-page .filters .spacer {
+  flex: 1;
+}
+.inscripciones-page .columns-select {
+  margin-left: auto;
+}
+
+/* Table */
+.inscripciones-page .table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.inscripciones-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.inscripciones-page thead th {
+  text-align: left;
+  background: #fafafa;
+  color: var(--text-gray);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6; /* subtle vertical border */
+  white-space: nowrap;
+}
+.inscripciones-page thead th:last-child {
+  border-right: none;
+}
+.inscripciones-page tbody td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6; /* subtle vertical border */
+  vertical-align: top;
+  color: var(--text-dark);
+}
+.inscripciones-page tbody td:last-child {
+  border-right: none;
+}
+.inscripciones-page tbody tr:last-child td {
+  border-bottom: none;
+}
+.inscripciones-page .empty-message {
+  text-align: center;
+  color: var(--text-gray);
+  padding: 32px;
+}
+
+.inscripciones-page .student-name {
+  font-weight: 700;
+  margin: 0 0 2px 0;
+}
+.inscripciones-page .student-meta {
+  color: var(--text-gray);
+  font-size: 12px;
+  margin: 0;
+}
+
+.inscripciones-page .priorities {
+  line-height: 1.6;
+}
+.inscripciones-page .priorities div {
+  white-space: nowrap;
+}
+
+.inscripciones-page .actions-cell {
+  text-align: right;
+  vertical-align: middle;
+}
+
+.inscripciones-page .ver-ficha {
+  display: inline-block;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inscripciones-page .ver-ficha:hover {
+  background: #fff4ea;
+}
+
+@media (max-width: 900px) {
+  .inscripciones-page {
+    padding: 16px;
+  }
+  .inscripciones-page .table-wrap {
+    overflow-x: auto;
+  }
+  .inscripciones-page table {
+    min-width: 900px;
+  }
+}
+

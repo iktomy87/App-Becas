@@ -94,14 +94,24 @@ export class RankingService {
     return { calculados, inhabilitados };
   }
 
-  getRanking(convocatoriaId: string, page = 1, limit = 50) {
-    return this.prisma.resultadoRanking.findMany({
-      where: { convocatoriaId },
-      orderBy: [{ posicion: 'asc' }, { puntajeTotal: 'desc' }],
-      skip: (page - 1) * limit,
-      take: limit,
-      include: { padron: { select: { dni: true, legajo: true, nombreCompleto: true } } },
-    });
+  async getRanking(convocatoriaId: string, page = 1, limit = 50) {
+    const [data, total] = await Promise.all([
+      this.prisma.resultadoRanking.findMany({
+        where: { convocatoriaId },
+        orderBy: [{ posicion: 'asc' }, { puntajeTotal: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { padron: { select: { dni: true, legajo: true, nombreCompleto: true } } },
+      }),
+      this.prisma.resultadoRanking.count({ where: { convocatoriaId } }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+    };
   }
 
   getDesglose(convocatoriaId: string, dni: string) {

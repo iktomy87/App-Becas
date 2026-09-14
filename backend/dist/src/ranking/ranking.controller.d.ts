@@ -6,44 +6,49 @@ export declare class RankingController {
         calculados: number;
         inhabilitados: number;
     }>;
-    getRanking(convocatoriaId: string, page?: number, limit?: number): import(".prisma/client").Prisma.PrismaPromise<({
-        padron: {
-            legajo: string;
-            dni: string;
-            nombreCompleto: string;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        convocatoriaId: string;
-        padronId: string;
-        rankingConfigId: string;
-        posicion: number | null;
-        puntajeTotal: import("@prisma/client-runtime-utils").Decimal;
-        terminoPromedio: import("@prisma/client-runtime-utils").Decimal;
-        terminoAprobadas: import("@prisma/client-runtime-utils").Decimal;
-        terminoAvance: import("@prisma/client-runtime-utils").Decimal;
-        terminoAplazos: import("@prisma/client-runtime-utils").Decimal;
-        bonusAntecedentes: import("@prisma/client-runtime-utils").Decimal;
-        habilitado: boolean;
-        motivoInhabilitacion: string | null;
-        criterioDesempateVal: import("@prisma/client-runtime-utils").Decimal | null;
-    })[]>;
-    getDesglose(convocatoriaId: string, dni: string): import(".prisma/client").Prisma.Prisma__ResultadoRankingClient<{
-        rankingConfig: {
-            nombre: string;
-            minMateriasCursando: number;
-            minRegularizadas: number;
-            criterioDesempate: string;
+    getRanking(convocatoriaId: string, page?: number, limit?: number): Promise<{
+        data: ({
+            padron: {
+                legajo: string;
+                dni: string;
+                nombreCompleto: string;
+            };
+        } & {
             id: string;
             createdAt: Date;
             convocatoriaId: string;
+            padronId: string;
+            rankingConfigId: string;
+            posicion: number | null;
+            puntajeTotal: import("@prisma/client-runtime-utils").Decimal;
+            terminoPromedio: import("@prisma/client-runtime-utils").Decimal;
+            terminoAprobadas: import("@prisma/client-runtime-utils").Decimal;
+            terminoAvance: import("@prisma/client-runtime-utils").Decimal;
+            terminoAplazos: import("@prisma/client-runtime-utils").Decimal;
+            bonusAntecedentes: import("@prisma/client-runtime-utils").Decimal;
+            habilitado: boolean;
+            motivoInhabilitacion: string | null;
+            criterioDesempateVal: import("@prisma/client-runtime-utils").Decimal | null;
+        })[];
+        total: number;
+        page: number;
+        limit: number;
+    }>;
+    getDesglose(convocatoriaId: string, dni: string): import(".prisma/client").Prisma.Prisma__ResultadoRankingClient<{
+        rankingConfig: {
+            id: string;
+            nombre: string;
+            createdAt: Date;
+            convocatoriaId: string;
+            minMateriasCursando: number;
+            minRegularizadas: number;
+            criterioDesempate: string;
             version: number;
             tipo: string;
         };
         padron: {
-            estado: string;
             id: string;
+            estado: string;
             convocatoriaId: string;
             especialidadCodigo: number | null;
             plan: number | null;

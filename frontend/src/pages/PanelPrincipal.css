@@ -1,0 +1,147 @@
+/* ─── Layout y contenido del Panel Principal ─────────────────────────────── */
+.content {
+  padding: 30px 40px 60px;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 34px;
+  font-weight: 800;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+/* ─── Botones de acción ──────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn .ic {
+  font-size: 13px;
+  line-height: 1;
+  margin-right: 8px;
+}
+
+.btn.solid {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+
+.btn.outline {
+  background: #fff;
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+/* ─── Fila de convocatoria ───────────────────────────────────────────────── */
+.conv-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.conv-label {
+  font-size: 16px;
+  color: #3b3b3b;
+  margin-right: 14px;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--green-bg);
+  padding: 4px 14px;
+  border-radius: 14px;
+}
+
+.divider-orange {
+  height: 4px;
+  background: var(--orange);
+  margin-bottom: 26px;
+}
+
+/* ─── Layout dos columnas ────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  align-items: flex-start;
+}
+
+.col-main {
+  flex: 1;
+  min-width: 0;
+  margin-right: 24px;
+}
+
+.col-side {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+/* ─── Skeleton loading ───────────────────────────────────────────────────── */
+@keyframes sk-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.sk {
+  background: linear-gradient(90deg, #ebebeb 25%, #f5f5f5 50%, #ebebeb 75%);
+  background-size: 1200px 100%;
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Specific skeleton block sizes */
+.sk-h1   { width: 220px; height: 32px; border-radius: 6px; }
+.sk-btn  { width: 130px; height: 36px; border-radius: 20px; }
+.sk-conv { width: 340px; height: 16px; border-radius: 4px; }
+
+/* Skeleton table */
+.sk-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sk-table-head {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid var(--border);
+}
+
+.sk-table-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sk-table-row:last-child {
+  border-bottom: none;
+}
+
+/* Skeleton stat card */
+.sk-stat-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: #fff;
+}

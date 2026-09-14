@@ -20,7 +20,14 @@ let ConvocatoriasService = class ConvocatoriasService {
     findAll() {
         return this.prisma.convocatoria.findMany({
             orderBy: { createdAt: 'desc' },
-            include: { rankingConfig: true, _count: { select: { propuestas: true, cargas: true } } },
+            select: {
+                id: true,
+                nombre: true,
+                estado: true,
+                fechaApertura: true,
+                fechaCierre: true,
+                createdAt: true,
+            },
         });
     }
     async findOne(id) {

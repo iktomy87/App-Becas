@@ -4,6 +4,7 @@ import { PadronService } from '../padron/padron.service';
 import { EstadoConvocatoria } from '@prisma/client';
 import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
+import { EventEmitter } from 'events';
 import { parsearPreferencias, verificarFila, FilaInscripcion, ErrorFila } from './planilla-verifier';
 
 export interface ResultadoImportacion {
@@ -56,13 +57,16 @@ export class ImportacionService {
     let filasError = 0;
     let filasAdvertencia = 0;
 
-    // Leer planilla en streaming
+    // Leer planilla completa en memoria (heap ampliado a 4GB en package.json)
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(file.path);
+    if (file.originalname.toLowerCase().endsWith('.csv')) {
+      await workbook.csv.readFile(file.path);
+    } else {
+      await workbook.xlsx.readFile(file.path);
+    }
     const ws = workbook.worksheets[0];
 
     let headers: string[] = [];
-    // Agrupar filas por DNI (max 5 preferencias por estudiante — RN-01)
     const porEstudiante = new Map<string, { fila: FilaInscripcion; rowIndex: number }>();
 
     ws.eachRow((row, idx) => {
@@ -75,35 +79,47 @@ export class ImportacionService {
       const raw: any = {};
       row.eachCell((cell, col) => { raw[headers[col - 1]] = cell.value; });
 
-      const dni = String(raw['DNI'] ?? '').replace(/\./g, '').trim();
-      if (!dni) { filasError++; return; }
+      // Buscar DNI en distintas variantes de nombre de columna
+      const rawDni = raw['DNI'] ?? raw['Nro Documento'] ?? raw['Nº Documento'] ?? raw['Documento'] ?? raw['Nro. Documento'] ?? raw['N°Documento'] ?? '';
+      const dni = String(rawDni).replace(/\./g, '').trim();
+      
+      if (!dni || dni === 'undefined' || dni === 'null') { filasError++; return; }
 
       const parsedPrefs = parsearPreferencias(raw);
       const promedio = raw['Promedio'] ? parseFloat(String(raw['Promedio']).replace(',', '.')) : undefined;
+
 
       if (!porEstudiante.has(dni)) {
         porEstudiante.set(dni, {
           rowIndex: idx,
           fila: {
             dni,
-            legajo: String(raw['Legajo'] ?? '').trim(),
-            nombre: String(raw['Nombre'] ?? '').trim(),
-            apellido: String(raw['Apellido'] ?? '').trim(),
-            email: String(raw['Email'] ?? '').trim(),
-            carrera: String(raw['Carrera'] ?? '').trim(),
+            legajo:   String(raw['Legajo'] ?? raw['Legajo '] ?? '').trim(),
+            nombre:   String(raw['Nombre'] ?? raw['Nombres'] ?? '').trim(),
+            apellido: String(raw['Apellido'] ?? raw['Apellidos'] ?? '').trim(),
+            email:    String(raw['Email'] ?? raw['E-mail'] ?? raw['Correo'] ?? '').trim(),
+            carrera:  String(raw['Carrera'] ?? raw['Especialidad'] ?? '').trim(),
             promedio,
-            aprobadas: raw['Arpobadas'] != null ? Number(raw['Arpobadas']) : undefined,
-            cursadas: raw['Cursadas'] != null ? Number(raw['Cursadas']) : undefined,
-            aplazos: raw['Numero de Aplazos'] != null ? Number(raw['Numero de Aplazos']) : undefined,
+            aprobadas: raw['Arpobadas']          != null ? Number(raw['Arpobadas'])          : (raw['Aprobadas'] != null ? Number(raw['Aprobadas']) : undefined),
+            cursadas:  raw['Cursadas']            != null ? Number(raw['Cursadas'])            : undefined,
+            aplazos:   raw['Numero de Aplazos']   != null ? Number(raw['Numero de Aplazos'])   : (raw['Aplazos'] != null ? Number(raw['Aplazos']) : undefined),
             preferencias: parsedPrefs,
           },
         });
       } else {
-        // Agregar preferencias adicionales de otras filas del mismo estudiante
-        const entry = porEstudiante.get(dni)!;
-        entry.fila.preferencias.push(...parsedPrefs);
+        porEstudiante.get(dni)!.fila.preferencias.push(...parsedPrefs);
       }
     });
+
+    // OPTIMIZACIÓN: Cargar todo el padrón y propuestas de la convocatoria en memoria
+    const [allPadron, allPropuestas] = await Promise.all([
+      this.prisma.padronAcademico.findMany({ where: { convocatoriaId } }),
+      this.prisma.propuesta.findMany({ where: { convocatoriaId } })
+    ]);
+    const padronMap = new Map(allPadron.map(p => [p.dni, p]));
+    const propuestaMap = new Map(allPropuestas.map(p => [p.idExterno, p]));
+
+    const upsertOps: any[] = [];
 
     // Verificar cada estudiante
     for (const [dni, { fila, rowIndex }] of porEstudiante) {
@@ -112,7 +128,7 @@ export class ImportacionService {
         .sort((a, b) => a.orden - b.orden)
         .slice(0, 5);
 
-      const padronEntry = await this.padronService.findByDni(dni, convocatoriaId);
+      const padronEntry = padronMap.get(dni) || null;
       const resultado = verificarFila(rowIndex, fila, padronEntry);
 
       todosErrores.push(...resultado.errores);
@@ -132,23 +148,31 @@ export class ImportacionService {
       // Verificar IDs de propuestas existen
       let prefValidas = 0;
       for (const pref of fila.preferencias) {
-        const propuesta = await this.prisma.propuesta.findFirst({
-          where: { idExterno: pref.idPropuesta, convocatoriaId },
-        });
+        const propuesta = propuestaMap.get(pref.idPropuesta);
         if (!propuesta) {
           todosErrores.push({ fila: rowIndex, tipo: 'ERROR', campo: 'preferencias', mensaje: `ID de propuesta no existe: ${pref.idPropuesta}` });
           continue;
         }
-        // Persistir postulación usando datos del padrón (no de la planilla)
-        await this.prisma.postulacion.upsert({
-          where: { padronId_convocatoriaId_ordenPreferencia: { padronId: padronEntry!.id, convocatoriaId, ordenPreferencia: pref.orden } },
-          create: { padronId: padronEntry!.id, propuestaId: propuesta.id, convocatoriaId, cargaPlanillaId: carga.id, ordenPreferencia: pref.orden },
-          update: { propuestaId: propuesta.id, cargaPlanillaId: carga.id },
-        });
+        
+        // Agregar a la cola de operaciones
+        upsertOps.push(
+          this.prisma.postulacion.upsert({
+            where: { padronId_convocatoriaId_ordenPreferencia: { padronId: padronEntry!.id, convocatoriaId, ordenPreferencia: pref.orden } },
+            create: { padronId: padronEntry!.id, propuestaId: propuesta.id, convocatoriaId, cargaPlanillaId: carga.id, ordenPreferencia: pref.orden },
+            update: { propuestaId: propuesta.id, cargaPlanillaId: carga.id },
+          })
+        );
         prefValidas++;
       }
       if (prefValidas > 0) filasValidas++;
       else filasError++;
+    }
+
+    // Ejecutar todos los upserts en lotes concurrentes para evitar N+1
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < upsertOps.length; i += BATCH_SIZE) {
+      const chunk = upsertOps.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk);
     }
 
     // Marcar esta carga como vigente, invalidar anteriores
@@ -190,6 +214,24 @@ export class ImportacionService {
     return this.prisma.cargaPlanilla.findMany({
       where: { convocatoriaId },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  getInscripciones(convocatoriaId: string) {
+    // Retorna todos los estudiantes del padron que tienen al menos una postulacion en esta convocatoria
+    return this.prisma.padronAcademico.findMany({
+      where: {
+        convocatoriaId,
+        postulaciones: { some: { convocatoriaId } }
+      },
+      include: {
+        postulaciones: {
+          where: { convocatoriaId },
+          orderBy: { ordenPreferencia: 'asc' },
+          include: { propuesta: true }
+        }
+      },
+      orderBy: { nombreCompleto: 'asc' }
     });
   }
 }

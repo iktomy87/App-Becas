@@ -4,8 +4,8 @@ export declare class PropuestasController {
     private readonly service;
     constructor(service: PropuestasService);
     findAll(convocatoriaId?: string): import(".prisma/client").Prisma.PrismaPromise<{
-        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         createdAt: Date;
         updatedAt: Date;
         convocatoriaId: string;
@@ -29,8 +29,8 @@ export declare class PropuestasController {
         vacantesDisponibles: number;
     }[]>;
     findOne(id: string): Promise<{
-        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         createdAt: Date;
         updatedAt: Date;
         convocatoriaId: string;
@@ -54,8 +54,8 @@ export declare class PropuestasController {
         vacantesDisponibles: number;
     }>;
     create(dto: CreatePropuestaDto): Promise<{
-        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         createdAt: Date;
         updatedAt: Date;
         convocatoriaId: string;
@@ -79,8 +79,8 @@ export declare class PropuestasController {
         vacantesDisponibles: number;
     }>;
     publicar(id: string): Promise<{
-        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         createdAt: Date;
         updatedAt: Date;
         convocatoriaId: string;
@@ -104,8 +104,8 @@ export declare class PropuestasController {
         vacantesDisponibles: number;
     }>;
     updateVacantes(id: string, dto: UpdateVacantesDto): Promise<{
-        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoPropuesta;
         createdAt: Date;
         updatedAt: Date;
         convocatoriaId: string;

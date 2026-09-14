@@ -9,26 +9,26 @@ export declare class AsignacionController {
     }>;
     getResultados(convocatoriaId: string, page?: number, limit?: number): import(".prisma/client").Prisma.Prisma__CorridaAsignacionClient<{
         resultados: ({
-            propuesta: {
-                idExterno: string;
-                titulo: string;
-            };
             padron: {
                 legajo: string;
                 dni: string;
                 nombreCompleto: string;
             };
+            propuesta: {
+                idExterno: string;
+                titulo: string;
+            };
         } & {
-            estado: import(".prisma/client").$Enums.EstadoAsignacion;
             id: string;
+            estado: import(".prisma/client").$Enums.EstadoAsignacion;
             propuestaId: string | null;
             padronId: string;
             preferenciaSatisfecha: number | null;
             corridaId: string;
         })[];
     } & {
-        estado: import(".prisma/client").$Enums.EstadoCorrida;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoCorrida;
         convocatoriaId: string;
         vigente: boolean;
         totalPostulantes: number;
@@ -38,9 +38,13 @@ export declare class AsignacionController {
         finishedAt: Date | null;
     }, null, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
     getResultadoPorDni(convocatoriaId: string, dni: string): import(".prisma/client").Prisma.Prisma__ResultadoAsignacionClient<{
+        padron: {
+            dni: string;
+            nombreCompleto: string;
+        };
         propuesta: {
-            estado: import(".prisma/client").$Enums.EstadoPropuesta;
             id: string;
+            estado: import(".prisma/client").$Enums.EstadoPropuesta;
             createdAt: Date;
             updatedAt: Date;
             convocatoriaId: string;
@@ -63,13 +67,9 @@ export declare class AsignacionController {
             modulos: number;
             vacantesDisponibles: number;
         };
-        padron: {
-            dni: string;
-            nombreCompleto: string;
-        };
     } & {
-        estado: import(".prisma/client").$Enums.EstadoAsignacion;
         id: string;
+        estado: import(".prisma/client").$Enums.EstadoAsignacion;
         propuestaId: string | null;
         padronId: string;
         preferenciaSatisfecha: number | null;

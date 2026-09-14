@@ -1,3 +1,4 @@
+import 'dotenv/config';   // ← debe ser el PRIMER import para que DATABASE_URL esté disponible antes de que NestJS instancie módulos
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';

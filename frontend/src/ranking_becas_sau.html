@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking - Becas SAU</title>
+<style>
+  :root{
+    --orange: #F5821F;
+    --orange-dark: #e06f0f;
+    --text-dark: #1f2937;
+    --text-gray: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f5f6f8;
+    --green-badge: #22c55e;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-dark);
+  }
+
+  /* top black bar */
+  .top-bar{
+    height: 6px;
+    background: #111;
+  }
+
+  /* header / nav */
+  header{
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .header-inner{
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 32px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand-logo{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: conic-gradient(from 0deg, #e11d48, #f59e0b, #22c55e, #0ea5e9, #8b5cf6, #e11d48);
+  }
+  .brand-logo::after{
+    content:"";
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .brand-name{
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+  }
+  nav{
+    display:flex;
+    gap: 32px;
+  }
+  nav a{
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 14px;
+    padding-bottom: 4px;
+  }
+  nav a.active{
+    color: var(--orange);
+    border-bottom: 2px solid var(--orange);
+    font-weight: 600;
+  }
+
+  /* main content */
+  main{
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  .page-title-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  h1{
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .actions{
+    display:flex;
+    gap: 12px;
+  }
+  .btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--orange);
+    background: transparent;
+    color: var(--orange);
+    transition: background 0.15s ease;
+  }
+  .btn-solid{
+    background: var(--orange);
+    color: #fff;
+  }
+  .btn-solid:hover{ background: var(--orange-dark); }
+  .btn:not(.btn-solid):hover{ background: #fff4ea; }
+
+  .title-divider{
+    height: 3px;
+    background: var(--orange);
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+
+  .convocatoria-row{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .convocatoria-row h2{
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .badge-active{
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 12px;
+    border-radius: 999px;
+  }
+  .updated{
+    color: var(--text-gray);
+    font-size: 13px;
+    margin: 0 0 20px 0;
+  }
+
+  /* filters */
+  .filters{
+    display:flex;
+    align-items:center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .filters input[type="text"]{
+    flex: 1;
+    max-width: 340px;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-dark);
+    background: #fff;
+  }
+  .filters input::placeholder{ color: #b0b4ba; }
+  .select-like{
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+    color: var(--text-dark);
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .select-like svg{ width: 12px; height: 12px; opacity: 0.6; }
+  .filters .spacer{ flex: 1; }
+  .columns-select{ margin-left: auto; }
+
+  /* table */
+  .table-wrap{
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th{
+    text-align: left;
+    background: #fafafa;
+    color: var(--text-gray);
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td{
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text-dark);
+  }
+  tbody tr:last-child td{ border-bottom: none; }
+  tbody tr.empty-row td{
+    height: 46px;
+  }
+
+  .student-name{
+    font-weight: 600;
+    margin: 0 0 2px 0;
+  }
+  .student-meta{
+    color: var(--text-gray);
+    font-size: 12px;
+    margin: 0;
+  }
+  .factor-cell{ font-weight: 700; }
+
+  .priorities{
+    line-height: 1.6;
+  }
+  .priorities div{ white-space: nowrap; }
+
+  .ver-ficha{
+    display:inline-block;
+    border: 1px solid var(--orange);
+    color: var(--orange);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-top: 4px;
+  }
+  .ver-ficha:hover{ background: #fff4ea; }
+
+  @media (max-width: 900px){
+    .header-inner{ padding: 14px 16px; }
+    nav{ gap: 18px; }
+    main{ padding: 16px; }
+    .table-wrap{ overflow-x: auto; }
+    table{ min-width: 900px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-logo"></div>
+      <span class="brand-name">BECAS SAU</span>
+    </div>
+    <nav>
+      <a href="#">Inicio</a>
+      <a href="#">Inscripciones</a>
+      <a href="#" class="active">Ranking</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="page-title-row">
+    <h1>Ranking</h1>
+    <div class="actions">
+      <button class="btn btn-solid">⭱ Cargar planilla</button>
+      <button class="btn">⭳ Descargar planilla</button>
+    </div>
+  </div>
+  <div class="title-divider"></div>
+
+  <div class="convocatoria-row">
+    <h2>Convocatoria 202x</h2>
+    <span class="badge-active">Activo</span>
+  </div>
+  <p class="updated">Última actualización: 20/06/2028</p>
+
+  <div class="filters">
+    <input type="text" placeholder="Buscar por nombre, legajo o DNI">
+    <div class="select-like">Todos los tipos <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
+    <div class="select-like">Todas las carreras <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
+    <div class="spacer"></div>
+    <div class="select-like columns-select">Columnas <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Pos.</th>
+          <th>Estudiante</th>
+          <th>Carrera</th>
+          <th>Promedio</th>
+          <th>Factor</th>
+          <th>Cursadas</th>
+          <th>Aprobadas</th>
+          <th>Aplazos</th>
+          <th>Prioridades</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>
+            <p class="student-name">Brizuela Silvestri, Yoel Elián</p>
+            <p class="student-meta">DNI: 44154651 - Leg. 27055</p>
+          </td>
+          <td>ISI</td>
+          <td>7,81</td>
+          <td class="factor-cell">17,30</td>
+          <td>46</td>
+          <td>42</td>
+          <td>0</td>
+          <td>
+            <div class="priorities">
+              <div>1° - 112618324505568</div>
+              <div>2° - 11051121314338064</div>
+              <div>3° - 1112121953573970</div>
+              <div>4° - 1128111635975267</div>
+              <div>5° - 1125100938631176</div>
+            </div>
+            <button class="ver-ficha">Ver ficha</button>
+          </td>
+        </tr>
+        <tr class="empty-row"><td colspan="9"></td></tr>
+        <tr class="empty-row"><td colspan="9"></td></tr>
+        <tr class="empty-row"><td colspan="9"></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+</body>
+</html>

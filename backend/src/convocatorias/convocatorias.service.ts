@@ -7,10 +7,18 @@ import { CreateConvocatoriaDto, UpdateConvocatoriaDto, CreateRankingConfigDto } 
 export class ConvocatoriasService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Lista todas las convocatorias (datos mínimos, sin JOINs pesados) */
   findAll() {
     return this.prisma.convocatoria.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { rankingConfig: true, _count: { select: { propuestas: true, cargas: true } } },
+      select: {
+        id: true,
+        nombre: true,
+        estado: true,
+        fechaApertura: true,
+        fechaCierre: true,
+        createdAt: true,
+      },
     });
   }
 

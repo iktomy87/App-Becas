@@ -1,0 +1,94 @@
+/* ─── Topbar ─────────────────────────────────────────────────────────────── */
+.logo {
+  object-fit: contain;
+  width: 25%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.brand-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid #cfcfcf;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+
+.brand-mark svg {
+  width: 30px;
+  height: 30px;
+}
+
+.brand-text {
+  line-height: 1.25;
+}
+
+.brand-text .t0 {
+  font-size: 9px;
+  color: #9a9a9a;
+  letter-spacing: 0.2px;
+}
+
+.brand-text .t1 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #1a1a1a;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  position: relative; /* necesario para posicionar el indicador */
+}
+
+.nav a {
+  font-size: 15px;
+  color: #3b3b3b;
+  padding-bottom: 6px;
+  margin-left: 40px;
+}
+
+.nav a:first-child {
+  margin-left: 0;
+}
+
+.nav a.active {
+  color: #1a1a1a;
+  font-weight: 600;
+  /* border-bottom eliminado — lo maneja .nav-indicator */
+}
+
+/* ─── Indicador deslizante ───────────────────────────────────────────────── */
+.nav-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 4px;
+  background: var(--orange);
+  border-radius: 2px;
+  pointer-events: none;
+  transition:
+    left  0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.topbar-divider {
+  height: 1px;
+  background: #eee;
+}
+
+
