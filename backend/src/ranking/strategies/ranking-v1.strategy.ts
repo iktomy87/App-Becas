@@ -15,18 +15,19 @@ import { RankingStrategy, PuntajeDesglose } from './ranking.strategy';
  */
 @Injectable()
 export class RankingV1Strategy implements RankingStrategy {
-  calcularPuntaje(padron: PadronAcademico, totalMateriasPlan = 42): PuntajeDesglose {
+  calcularPuntaje(padron: PadronAcademico, bonusAntecedentes = 0): PuntajeDesglose {
     const promedio = Number(padron.promedio) || 0;
     const aprobadas = padron.aprobadas || 0;
-    const cursando = padron.cursando || 0;
+    const cursadas = padron.regularizadas || 0;
     const aplazos = padron.aplazos || 0;
+
+    let totalMateriasPlan = 45;
+    if (padron.especialidadCodigo === 1) totalMateriasPlan = 42; // ISI
 
     const terminoPromedio = promedio;
     const terminoAprobadas = aprobadas * 0.1;
-    const terminoAvance = totalMateriasPlan > 0 ? (cursando * 3) / totalMateriasPlan : 0;
+    const terminoAvance = totalMateriasPlan > 0 ? (cursadas * 3) / totalMateriasPlan : 0;
     const terminoAplazos = 2 / (1 + aplazos);
-    // PENDIENTE: bonusAntecedentes siempre 0 hasta confirmar fuente
-    const bonusAntecedentes = 0;
 
     const puntajeTotal = terminoPromedio + terminoAprobadas + terminoAvance + terminoAplazos + bonusAntecedentes;
 

@@ -66,6 +66,10 @@ export interface ResultadoRanking {
     legajo:         string;
     especialidadCodigo?: number;
     promedio:       number;
+    cursando?:      number;
+    regularizadas:  number;
+    aprobadas:      number;
+    aplazos:        number;
   };
   postulaciones?: Array<{
     ordenPreferencia: number;

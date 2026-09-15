@@ -6,6 +6,13 @@ export const rankingService = {
   calcular: (convocatoriaId: string) =>
     http.post<{ mensaje: string }>(`/convocatorias/${convocatoriaId}/ranking/calcular`),
 
+  /** POST /convocatorias/:convocatoriaId/ranking/importar */
+  importar: (convocatoriaId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return http.upload<{ filasTotal: number; filasValidas: number; filasError: number; errores: any[] }>(`/convocatorias/${convocatoriaId}/ranking/importar`, form);
+  },
+
   /** GET /convocatorias/:convocatoriaId/ranking?page=&limit= */
   listar: (convocatoriaId: string, page = 1, limit = 50) =>
     http.get<RankingPage>(
