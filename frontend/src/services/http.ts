@@ -70,7 +70,7 @@ function uploadWithProgress<T>(
   formData: FormData,
   options?: { inactivityTimeoutMs?: number; onProgress?: (pct: number) => void },
 ): Promise<T> {
-  const inactivityTimeoutMs = options?.inactivityTimeoutMs ?? 120_000; // 60s sin avanzar = lo damos por colgado
+  const inactivityTimeoutMs = options?.inactivityTimeoutMs ?? 120_000; // 120s sin avanzar = lo damos por colgado
   const onProgress = options?.onProgress;
 
   return new Promise<T>((resolve, reject) => {
@@ -90,6 +90,13 @@ function uploadWithProgress<T>(
       if (e.lengthComputable && onProgress) {
         onProgress(Math.round((e.loaded / e.total) * 100));
       }
+    });
+
+    // Cuando el archivo terminó de enviarse, el servidor puede tardar mucho
+    // procesándolo (ej. padrón de 24k filas). Cancelamos el timer de
+    // inactividad para que no aborte mientras el server trabaja.
+    xhr.upload.addEventListener('loadend', () => {
+      clearTimeout(inactivityTimer);
     });
 
     xhr.addEventListener('load', () => {
@@ -128,10 +135,10 @@ export const http = {
 
   /**
    * Para uploads multipart de archivos grandes. Timeout de INACTIVIDAD
-   * (default 60s sin progreso), no de duración total — así un archivo de
+   * (120s sin progreso), no de duración total — así un archivo de
    * 2GB no falla solo por tardar, mientras siga avanzando.
    * Pasá onProgress para mostrar % de subida en la UI.
    */
   upload: <T>(path: string, formData: FormData, onProgress?: (pct: number) => void) =>
-    uploadWithProgress<T>(path, formData, { onProgress }),
+    uploadWithProgress<T>(path, formData, { inactivityTimeoutMs: 120_000, onProgress }),
 };

@@ -50,10 +50,10 @@ export function PanelPrincipal() {
   const [dropzoneOpen, setDropzoneOpen] = useState(false);
   const [uploadType, setUploadType]     = useState<'planilla' | 'padron'>('planilla');
   const [uploading, setUploading]       = useState(false);
-  const [notification, setNotification] = useState<{ title: string; message: string; isError: boolean } | null>(null);
+  const [notification, setNotification] = useState<{ title: string; message: string; type: 'success'|'warning'|'error' } | null>(null);
 
   const {
-    convocatoria, ranking, rankingTotal, cargas, loading, error,
+    convocatoria, ranking, rankingTotal, cargas, loading, error: panelError,
     cargarPlanilla, cargarPadron, uploadProgress
   } = usePanelPrincipal();
 
@@ -68,27 +68,42 @@ export function PanelPrincipal() {
         setNotification({
           title: 'Padrón cargado',
           message: res?.mensaje || 'Se ha cargado el padrón correctamente.',
-          isError: false,
+          type: 'success',
         });
       } else {
         const res = await cargarPlanilla(file);
+        console.log('[Planilla resultado]', res);
+
+        const buildErrorSummary = (errores: any[]) => {
+          if (!errores || errores.length === 0) return '';
+          const counts: Record<string, number> = {};
+          for (const e of errores) {
+            const key = e.campo === 'dni' ? 'DNI no encontrado en el padrón'
+              : e.campo === 'preferencias' && e.mensaje?.includes('no tiene preferencias') ? 'Sin preferencias declaradas'
+              : e.campo === 'preferencias' && e.mensaje?.includes('no existe') ? 'ID de propuesta no existe'
+              : e.mensaje || 'Error desconocido';
+            counts[key] = (counts[key] || 0) + 1;
+          }
+          return '\n\nDetalle:\n' + Object.entries(counts).map(([msg, n]) => `• ${msg}: ${n}`).join('\n');
+        };
+
         if (res?.filasValidas > 0 && res?.filasError === 0) {
           setNotification({
             title: 'Planilla procesada con éxito',
-            message: `Se procesaron ${res.filasValidas} filas correctamente.`,
-            isError: false,
+            message: `Se guardaron ${res.filasValidas} inscripciones correctamente.`,
+            type: 'success',
           });
         } else if (res?.filasValidas > 0 && res?.filasError > 0) {
           setNotification({
-            title: 'Planilla procesada con errores',
-            message: `Se procesaron ${res.filasValidas} filas, pero ${res.filasError} tuvieron errores y fueron descartadas.`,
-            isError: true,
+            title: 'Carga parcial (con advertencias)',
+            message: `Se guardaron ${res.filasValidas} inscripciones correctamente.\nSin embargo, ${res.filasError} filas fueron descartadas por errores.${buildErrorSummary((res as any).errores)}`,
+            type: 'warning',
           });
         } else {
           setNotification({
-            title: 'No se procesó ninguna fila',
-            message: `Hubo ${res?.filasError ?? 0} errores. Asegurate de subir el padrón antes de cargar inscripciones.`,
-            isError: true,
+            title: 'No se guardó ninguna inscripción',
+            message: `Todas las filas (${res?.filasError ?? 0}) fueron rechazadas. Revisá los errores antes de volver a intentar.${buildErrorSummary((res as any)?.errores)}`,
+            type: 'error',
           });
         }
       }
@@ -96,7 +111,7 @@ export function PanelPrincipal() {
       setNotification({
         title: 'Error al procesar el archivo',
         message: err.message || 'No se pudo completar la operación.',
-        isError: true,
+        type: 'error',
       });
     } finally {
       setUploading(false);
@@ -119,16 +134,16 @@ export function PanelPrincipal() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
       }}>
         <div style={{ fontSize: '44px', marginBottom: '12px' }}>
-          {notification.isError ? '❌' : '✅'}
+          {notification.type === 'error' ? '❌' : notification.type === 'warning' ? '⚠️' : '✅'}
         </div>
-        <h2 style={{ margin: '0 0 10px', fontSize: '20px', color: notification.isError ? '#e2574c' : '#15803d' }}>
+        <h2 style={{ margin: '0 0 10px', fontSize: '20px', color: notification.type === 'error' ? '#e2574c' : notification.type === 'warning' ? '#ca8a04' : '#15803d' }}>
           {notification.title}
         </h2>
-        <p style={{ margin: '0 0 26px', color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5' }}>
+        <p style={{ margin: '0 0 26px', color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
           {notification.message}
         </p>
         <button className="btn solid" style={{ padding: '8px 28px' }} onClick={() => setNotification(null)}>
-          Cerrar
+          {notification.type === 'warning' ? 'Continuar de todos modos' : 'Cerrar'}
         </button>
       </div>
     </div>,
@@ -206,12 +221,12 @@ export function PanelPrincipal() {
     );
   }
 
-  if (error) {
+  if (panelError) {
     return (
       <>
         {notificationPortal}
         <div className="content">
-          <p style={{ color: '#e2574c' }}>⚠ {error}</p>
+          <p style={{ color: '#e2574c' }}>⚠ {panelError}</p>
         </div>
       </>
     );

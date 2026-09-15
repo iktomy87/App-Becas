@@ -72,6 +72,11 @@ export class ImportacionController {
     return this.importacionService.listarCargas(convocatoriaId);
   }
 
+  @Get('planillas/inscripciones')
+  getInscripciones(@Param('convocatoriaId') convocatoriaId: string) {
+    return this.importacionService.getInscripciones(convocatoriaId);
+  }
+
   @Get('planillas/:cargaId')
   async getPlanilla(@Param('cargaId') cargaId: string) {
     const carga = await this.importacionService.getCarga(cargaId);

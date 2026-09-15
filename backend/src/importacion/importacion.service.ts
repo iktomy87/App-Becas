@@ -123,6 +123,49 @@ export class ImportacionService {
     };
     const filasPostulacion: FilaPostulacion[] = [];
 
+    // ── DEBUG: log para diagnosticar por qué fallan todas las filas ──
+    console.log('[DEBUG importación] Headers leídos:', headers);
+    console.log('[DEBUG importación] Estudiantes parseados:', porEstudiante.size);
+    const sampleDnis = [...porEstudiante.keys()].slice(0, 5);
+    console.log('[DEBUG importación] Primeros DNIs del archivo:', sampleDnis);
+    console.log('[DEBUG importación] Registros en padrón:', allPadron.length);
+    const samplePadronDnis = [...padronMap.keys()].slice(0, 5);
+    console.log('[DEBUG importación] Primeros DNIs del padrón:', samplePadronDnis);
+    console.log('[DEBUG importación] Propuestas:', allPropuestas.length);
+    for (const d of sampleDnis) {
+      console.log(`[DEBUG importación] DNI "${d}" en padrón? ${padronMap.has(d)}`);
+    }
+
+    // ── 2b) Auto-crear propuestas que no existan ──
+    // Recopilar todos los idPropuesta únicos que aparecen en las preferencias
+    const allPrefIds = new Set<string>();
+    for (const { fila } of porEstudiante.values()) {
+      for (const pref of fila.preferencias) {
+        if (pref.idPropuesta) allPrefIds.add(pref.idPropuesta);
+      }
+    }
+    // Crear las que falten
+    const missingIds = [...allPrefIds].filter(id => !propuestaMap.has(id));
+    if (missingIds.length > 0) {
+      console.log(`[importación] Auto-creando ${missingIds.length} propuestas desde las preferencias del archivo...`);
+      for (const idExterno of missingIds) {
+        const created = await this.prisma.propuesta.create({
+          data: {
+            idExterno,
+            titulo: `Propuesta ${idExterno}`,
+            tipo: 'SERVICIO',
+            responsableNombre: 'Por definir',
+            responsableEmail: 'por-definir@ejemplo.com',
+            vacantesTotal: 1,
+            vacantesDisponibles: 1,
+            convocatoriaId,
+          },
+        });
+        propuestaMap.set(idExterno, created);
+      }
+      console.log(`[importación] ${missingIds.length} propuestas creadas.`);
+    }
+
     for (const [dni, { fila, rowIndex }] of porEstudiante) {
       fila.preferencias = fila.preferencias.sort((a, b) => a.orden - b.orden).slice(0, 5);
 
