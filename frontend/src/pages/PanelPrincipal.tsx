@@ -54,7 +54,7 @@ export function PanelPrincipal() {
 
   const {
     convocatoria, ranking, rankingTotal, cargas, loading, error,
-    cargarPlanilla, cargarPadron,
+    cargarPlanilla, cargarPadron, uploadProgress
   } = usePanelPrincipal();
 
   const cargaVigente   = cargas.find((c) => c.vigente);
@@ -146,8 +146,9 @@ export function PanelPrincipal() {
         borderTop: '5px solid #fff', borderRadius: '50%',
         animation: 'spin 0.9s linear infinite',
       }} />
-      <p style={{ color: '#fff', fontWeight: 600, fontSize: '15px', margin: 0 }}>
-        Procesando archivo…
+      <p style={{ color: '#fff', fontWeight: 600, fontSize: '15px', margin: 0, textAlign: 'center' }}>
+        Procesando archivo…<br/>
+        {uploadProgress?.rowsProcessed ? <span style={{fontSize: '13px', fontWeight: 'normal', opacity: 0.8}}>({uploadProgress.rowsProcessed} filas)</span> : null}
       </p>
     </div>,
     document.body,
@@ -234,37 +235,8 @@ export function PanelPrincipal() {
         sub={uploadType === 'padron' ? 'O hacé clic para buscar el archivo maestro en tu equipo' : 'O hacé clic para buscar tu planilla en tu equipo'}
       />
 
-      {/* Overlay de notificación */}
-      {notification && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{
-            background: '#fff', padding: '30px', borderRadius: '12px',
-            maxWidth: '400px', width: '100%', textAlign: 'center',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-          }}>
-            <div style={{ fontSize: '40px', marginBottom: '10px' }}>
-              {notification.isError ? '❌' : '✅'}
-            </div>
-            <h2 style={{ margin: '0 0 10px 0', fontSize: '20px', color: notification.isError ? '#e2574c' : '#15803d' }}>
-              {notification.title}
-            </h2>
-            <p style={{ margin: '0 0 24px 0', color: 'var(--text-muted)' }}>
-              {notification.message}
-            </p>
-            <button
-              className="btn solid"
-              style={{ padding: '8px 24px' }}
-              onClick={() => setNotification(null)}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
+      {notificationPortal}
+      {uploadingPortal}
 
       {/* Encabezado */}
       <div className="page-head">

@@ -17,6 +17,8 @@ export interface PanelState {
   cargarPlanilla: (file: File) => Promise<CargaPlanilla>;
   /** Sube un padrón y refresca */
   cargarPadron: (file: File) => Promise<any>;
+  /** Estado del progreso de carga asincrónica */
+  uploadProgress: { rowsProcessed?: number } | null;
 }
 
 /**
@@ -78,11 +80,11 @@ export function usePanelPrincipal(): PanelState {
   }, [tick]);
 
   function refresh() { setTick((t) => t + 1); }
+  const [uploadProgress, setUploadProgress] = useState<{ rowsProcessed?: number } | null>(null);
 
   async function cargarPlanilla(file: File) {
     let targetId = convocatoria?.id;
 
-    // Si no hay convocatoria activa, creamos una automáticamente para iniciar el proceso
     if (!targetId) {
       const now = new Date();
       const nextMonth = new Date(now);
@@ -96,7 +98,29 @@ export function usePanelPrincipal(): PanelState {
       targetId = nuevaConv.id;
     }
 
-    const res = await importacionService.cargar(targetId, file);
+    setUploadProgress(null);
+    let res: any = await importacionService.cargar(targetId, file);
+    
+    if (res?.jobId) {
+      // Es asincrónico, hacemos polling
+      while (true) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const status = await importacionService.status(targetId, res.jobId);
+        
+        if (status.progress) {
+          setUploadProgress(status.progress);
+        }
+
+        if (status.state === 'completed') {
+          res = status.resultado;
+          break;
+        } else if (status.state === 'failed') {
+          throw new Error(status.error || 'La importación falló');
+        }
+      }
+    }
+
+    setUploadProgress(null);
     refresh();
     return res;
   }
@@ -122,6 +146,6 @@ export function usePanelPrincipal(): PanelState {
     return res;
   }
 
-  return { convocatoria, ranking, rankingTotal, cargas, loading, error, refresh, cargarPlanilla, cargarPadron };
+  return { convocatoria, ranking, rankingTotal, cargas, loading, error, refresh, cargarPlanilla, cargarPadron, uploadProgress };
 }
 

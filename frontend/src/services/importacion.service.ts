@@ -6,8 +6,14 @@ export const importacionService = {
   cargar: (convocatoriaId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return http.upload<CargaPlanilla>(`/convocatorias/${convocatoriaId}/planillas`, form);
+    return http.upload<{ jobId?: string } | CargaPlanilla>(`/convocatorias/${convocatoriaId}/planillas`, form);
   },
+
+  /** GET /convocatorias/:convocatoriaId/planilla/status/:jobId */
+  status: (convocatoriaId: string, jobId: string) =>
+    http.get<{ state: string; progress: any; resultado?: any; error?: string }>(
+      `/convocatorias/${convocatoriaId}/planilla/status/${jobId}`
+    ),
 
   /** POST /convocatorias/:convocatoriaId/padron  (multipart) */
   cargarPadron: (convocatoriaId: string, file: File) => {

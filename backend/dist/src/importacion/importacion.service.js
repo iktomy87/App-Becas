@@ -16,13 +16,15 @@ const padron_service_1 = require("../padron/padron.service");
 const client_1 = require("@prisma/client");
 const ExcelJS = require("exceljs");
 const fs = require("fs");
+const crypto_1 = require("crypto");
 const planilla_verifier_1 = require("./planilla-verifier");
+const UPSERT_CHUNK_SIZE = 3000;
 let ImportacionService = class ImportacionService {
     constructor(prisma, padronService) {
         this.prisma = prisma;
         this.padronService = padronService;
     }
-    async cargarPlanilla(convocatoriaId, file) {
+    async cargarPlanilla(convocatoriaId, file, onProgress) {
         const conv = await this.prisma.convocatoria.findUnique({ where: { id: convocatoriaId } });
         if (!conv)
             throw new common_1.ConflictException('Convocatoria no encontrada');
@@ -46,65 +48,55 @@ let ImportacionService = class ImportacionService {
         let filasValidas = 0;
         let filasError = 0;
         let filasAdvertencia = 0;
-        const workbook = new ExcelJS.Workbook();
-        if (file.originalname.toLowerCase().endsWith('.csv')) {
-            await workbook.csv.readFile(file.path);
-        }
-        else {
-            await workbook.xlsx.readFile(file.path);
-        }
-        const ws = workbook.worksheets[0];
         let headers = [];
         const porEstudiante = new Map();
-        ws.eachRow((row, idx) => {
-            if (idx === 1) {
-                row.eachCell((cell) => headers.push(String(cell.value ?? '').trim()));
-                return;
+        const esCsv = file.originalname.toLowerCase().endsWith('.csv');
+        if (esCsv) {
+            await this.procesarCsvStreaming(file.path, (raw, idx, isHeaderRow) => {
+                if (isHeaderRow) {
+                    headers = raw;
+                    return;
+                }
+                this.procesarFila(raw, idx, headers, porEstudiante, () => filasTotal++);
+                if (onProgress && filasTotal % 5000 === 0)
+                    onProgress(filasTotal);
+            });
+        }
+        else {
+            const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(file.path, {
+                entries: 'emit',
+                sharedStrings: 'cache',
+                styles: 'ignore',
+                hyperlinks: 'ignore',
+                worksheets: 'emit',
+            });
+            for await (const worksheetReader of workbookReader) {
+                for await (const row of worksheetReader) {
+                    const idx = row.number;
+                    if (idx === 1) {
+                        const h = [];
+                        row.eachCell((cell) => h.push(String(cell.value ?? '').trim()));
+                        headers = h;
+                        continue;
+                    }
+                    const raw = {};
+                    row.eachCell((cell, col) => { raw[headers[col - 1]] = cell.value; });
+                    this.procesarFila(raw, idx, headers, porEstudiante, () => filasTotal++);
+                    if (onProgress && filasTotal % 5000 === 0)
+                        onProgress(filasTotal);
+                }
+                break;
             }
-            filasTotal++;
-            const raw = {};
-            row.eachCell((cell, col) => { raw[headers[col - 1]] = cell.value; });
-            const rawDni = raw['DNI'] ?? raw['Nro Documento'] ?? raw['Nº Documento'] ?? raw['Documento'] ?? raw['Nro. Documento'] ?? raw['N°Documento'] ?? '';
-            const dni = String(rawDni).replace(/\./g, '').trim();
-            if (!dni || dni === 'undefined' || dni === 'null') {
-                filasError++;
-                return;
-            }
-            const parsedPrefs = (0, planilla_verifier_1.parsearPreferencias)(raw);
-            const promedio = raw['Promedio'] ? parseFloat(String(raw['Promedio']).replace(',', '.')) : undefined;
-            if (!porEstudiante.has(dni)) {
-                porEstudiante.set(dni, {
-                    rowIndex: idx,
-                    fila: {
-                        dni,
-                        legajo: String(raw['Legajo'] ?? raw['Legajo '] ?? '').trim(),
-                        nombre: String(raw['Nombre'] ?? raw['Nombres'] ?? '').trim(),
-                        apellido: String(raw['Apellido'] ?? raw['Apellidos'] ?? '').trim(),
-                        email: String(raw['Email'] ?? raw['E-mail'] ?? raw['Correo'] ?? '').trim(),
-                        carrera: String(raw['Carrera'] ?? raw['Especialidad'] ?? '').trim(),
-                        promedio,
-                        aprobadas: raw['Arpobadas'] != null ? Number(raw['Arpobadas']) : (raw['Aprobadas'] != null ? Number(raw['Aprobadas']) : undefined),
-                        cursadas: raw['Cursadas'] != null ? Number(raw['Cursadas']) : undefined,
-                        aplazos: raw['Numero de Aplazos'] != null ? Number(raw['Numero de Aplazos']) : (raw['Aplazos'] != null ? Number(raw['Aplazos']) : undefined),
-                        preferencias: parsedPrefs,
-                    },
-                });
-            }
-            else {
-                porEstudiante.get(dni).fila.preferencias.push(...parsedPrefs);
-            }
-        });
+        }
         const [allPadron, allPropuestas] = await Promise.all([
             this.prisma.padronAcademico.findMany({ where: { convocatoriaId } }),
-            this.prisma.propuesta.findMany({ where: { convocatoriaId } })
+            this.prisma.propuesta.findMany({ where: { convocatoriaId } }),
         ]);
-        const padronMap = new Map(allPadron.map(p => [p.dni, p]));
-        const propuestaMap = new Map(allPropuestas.map(p => [p.idExterno, p]));
-        const upsertOps = [];
+        const padronMap = new Map(allPadron.map((p) => [p.dni, p]));
+        const propuestaMap = new Map(allPropuestas.map((p) => [p.idExterno, p]));
+        const filasPostulacion = [];
         for (const [dni, { fila, rowIndex }] of porEstudiante) {
-            fila.preferencias = fila.preferencias
-                .sort((a, b) => a.orden - b.orden)
-                .slice(0, 5);
+            fila.preferencias = fila.preferencias.sort((a, b) => a.orden - b.orden).slice(0, 5);
             const padronEntry = padronMap.get(dni) || null;
             const resultado = (0, planilla_verifier_1.verificarFila)(rowIndex, fila, padronEntry);
             todosErrores.push(...resultado.errores);
@@ -114,7 +106,7 @@ let ImportacionService = class ImportacionService {
                 continue;
             }
             if (resultado.requiereConfirmacion) {
-                const conf = resultado.advertencias.find(a => a.tipo === 'CONFIRMACION_REQUERIDA');
+                const conf = resultado.advertencias.find((a) => a.tipo === 'CONFIRMACION_REQUERIDA');
                 if (conf) {
                     confirmaciones.push({ fila: rowIndex, mensaje: conf.mensaje, dni });
                     filasTotal--;
@@ -130,11 +122,14 @@ let ImportacionService = class ImportacionService {
                     todosErrores.push({ fila: rowIndex, tipo: 'ERROR', campo: 'preferencias', mensaje: `ID de propuesta no existe: ${pref.idPropuesta}` });
                     continue;
                 }
-                upsertOps.push(this.prisma.postulacion.upsert({
-                    where: { padronId_convocatoriaId_ordenPreferencia: { padronId: padronEntry.id, convocatoriaId, ordenPreferencia: pref.orden } },
-                    create: { padronId: padronEntry.id, propuestaId: propuesta.id, convocatoriaId, cargaPlanillaId: carga.id, ordenPreferencia: pref.orden },
-                    update: { propuestaId: propuesta.id, cargaPlanillaId: carga.id },
-                }));
+                filasPostulacion.push({
+                    id: (0, crypto_1.randomUUID)(),
+                    padronId: padronEntry.id,
+                    propuestaId: propuesta.id,
+                    convocatoriaId,
+                    cargaPlanillaId: carga.id,
+                    ordenPreferencia: pref.orden,
+                });
                 prefValidas++;
             }
             if (prefValidas > 0)
@@ -142,11 +137,7 @@ let ImportacionService = class ImportacionService {
             else
                 filasError++;
         }
-        const BATCH_SIZE = 500;
-        for (let i = 0; i < upsertOps.length; i += BATCH_SIZE) {
-            const chunk = upsertOps.slice(i, i + BATCH_SIZE);
-            await Promise.all(chunk);
-        }
+        await this.upsertPostulacionesBulk(filasPostulacion);
         await this.prisma.$transaction([
             this.prisma.cargaPlanilla.updateMany({ where: { convocatoriaId, vigente: true }, data: { vigente: false } }),
             this.prisma.cargaPlanilla.update({
@@ -175,6 +166,82 @@ let ImportacionService = class ImportacionService {
             confirmacionesPendientes: confirmaciones,
         };
     }
+    procesarFila(raw, idx, headers, porEstudiante, contarFila) {
+        contarFila();
+        const rawDni = raw['DNI'] ?? raw['Nro Documento'] ?? raw['Nº Documento'] ?? raw['Documento'] ?? raw['Nro. Documento'] ?? raw['N°Documento'] ?? '';
+        const dni = String(rawDni).replace(/\./g, '').trim();
+        if (!dni || dni === 'undefined' || dni === 'null')
+            return;
+        const parsedPrefs = (0, planilla_verifier_1.parsearPreferencias)(raw);
+        const promedio = raw['Promedio'] ? parseFloat(String(raw['Promedio']).replace(',', '.')) : undefined;
+        if (!porEstudiante.has(dni)) {
+            porEstudiante.set(dni, {
+                rowIndex: idx,
+                fila: {
+                    dni,
+                    legajo: String(raw['Legajo'] ?? raw['Legajo '] ?? '').trim(),
+                    nombre: String(raw['Nombre'] ?? raw['Nombres'] ?? '').trim(),
+                    apellido: String(raw['Apellido'] ?? raw['Apellidos'] ?? '').trim(),
+                    email: String(raw['Email'] ?? raw['E-mail'] ?? raw['Correo'] ?? '').trim(),
+                    carrera: String(raw['Carrera'] ?? raw['Especialidad'] ?? '').trim(),
+                    promedio,
+                    aprobadas: raw['Arpobadas'] != null ? Number(raw['Arpobadas']) : (raw['Aprobadas'] != null ? Number(raw['Aprobadas']) : undefined),
+                    cursadas: raw['Cursadas'] != null ? Number(raw['Cursadas']) : undefined,
+                    aplazos: raw['Numero de Aplazos'] != null ? Number(raw['Numero de Aplazos']) : (raw['Aplazos'] != null ? Number(raw['Aplazos']) : undefined),
+                    preferencias: parsedPrefs,
+                },
+            });
+        }
+        else {
+            porEstudiante.get(dni).fila.preferencias.push(...parsedPrefs);
+        }
+    }
+    procesarCsvStreaming(filePath, onRow) {
+        const csv = require('csv-parser');
+        return new Promise((resolve, reject) => {
+            let idx = 1;
+            let headersSent = false;
+            fs.createReadStream(filePath)
+                .pipe(csv())
+                .on('headers', (headers) => {
+                onRow(headers, idx, true);
+                headersSent = true;
+                idx++;
+            })
+                .on('data', (row) => {
+                idx++;
+                onRow(row, idx, false);
+            })
+                .on('end', () => resolve())
+                .on('error', reject);
+        });
+    }
+    async upsertPostulacionesBulk(filas) {
+        for (let i = 0; i < filas.length; i += UPSERT_CHUNK_SIZE) {
+            const chunk = filas.slice(i, i + UPSERT_CHUNK_SIZE);
+            const ids = chunk.map((f) => f.id);
+            const padronIds = chunk.map((f) => f.padronId);
+            const propuestaIds = chunk.map((f) => f.propuestaId);
+            const convocatoriaIds = chunk.map((f) => f.convocatoriaId);
+            const cargaIds = chunk.map((f) => f.cargaPlanillaId);
+            const ordenes = chunk.map((f) => f.ordenPreferencia);
+            await this.prisma.$executeRaw `
+        INSERT INTO postulaciones (id, padron_id, propuesta_id, convocatoria_id, carga_planilla_id, orden_preferencia)
+        SELECT * FROM unnest(
+          ${ids}::text[],
+          ${padronIds}::text[],
+          ${propuestaIds}::text[],
+          ${convocatoriaIds}::text[],
+          ${cargaIds}::text[],
+          ${ordenes}::int[]
+        )
+        ON CONFLICT (padron_id, convocatoria_id, orden_preferencia)
+        DO UPDATE SET
+          propuesta_id = EXCLUDED.propuesta_id,
+          carga_planilla_id = EXCLUDED.carga_planilla_id
+      `;
+        }
+    }
     getCarga(id) {
         return this.prisma.cargaPlanilla.findUnique({ where: { id } });
     }
@@ -188,16 +255,16 @@ let ImportacionService = class ImportacionService {
         return this.prisma.padronAcademico.findMany({
             where: {
                 convocatoriaId,
-                postulaciones: { some: { convocatoriaId } }
+                postulaciones: { some: { convocatoriaId } },
             },
             include: {
                 postulaciones: {
                     where: { convocatoriaId },
                     orderBy: { ordenPreferencia: 'asc' },
-                    include: { propuesta: true }
-                }
+                    include: { propuesta: true },
+                },
             },
-            orderBy: { nombreCompleto: 'asc' }
+            orderBy: { nombreCompleto: 'asc' },
         });
     }
 };

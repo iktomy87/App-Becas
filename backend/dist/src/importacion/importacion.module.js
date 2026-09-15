@@ -8,22 +8,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ImportacionModule = void 0;
 const common_1 = require("@nestjs/common");
-const platform_express_1 = require("@nestjs/platform-express");
+const bullmq_1 = require("@nestjs/bullmq");
 const importacion_controller_1 = require("./importacion.controller");
 const importacion_service_1 = require("./importacion.service");
+const prisma_module_1 = require("../prisma/prisma.module");
 const padron_module_1 = require("../padron/padron.module");
+const importacion_constants_1 = require("./importacion.constants");
 let ImportacionModule = class ImportacionModule {
 };
 exports.ImportacionModule = ImportacionModule;
 exports.ImportacionModule = ImportacionModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            platform_express_1.MulterModule.register({ dest: './uploads/planillas' }),
+            prisma_module_1.PrismaModule,
             padron_module_1.PadronModule,
+            bullmq_1.BullModule.registerQueue({ name: importacion_constants_1.IMPORTACION_QUEUE }),
         ],
-        controllers: [importacion_controller_1.ImportacionController],
         providers: [importacion_service_1.ImportacionService],
-        exports: [importacion_service_1.ImportacionService],
+        controllers: [importacion_controller_1.ImportacionController],
     })
 ], ImportacionModule);
 //# sourceMappingURL=importacion.module.js.map

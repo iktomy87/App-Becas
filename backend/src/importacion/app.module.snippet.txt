@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { ImportacionModule } from './importacion.module';
+
+@Module({
+  imports: [
+    // otros módulos...
+    ImportacionModule,
+  ],
+})
+export class AppModule {}
+
