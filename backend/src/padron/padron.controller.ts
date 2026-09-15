@@ -15,7 +15,7 @@ export class PadronController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads/padron',
+      destination: '/tmp/uploads',
       filename: (_req, file, cb) => cb(null, `padron_${Date.now()}${extname(file.originalname)}`),
     }),
   }))

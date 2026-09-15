@@ -41,12 +41,44 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       NODE_ENV: production
+    volumes:
+      - uploads_data:/tmp/uploads
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: becas_worker
+    command: ["node", "dist/worker-main.js"]
+    environment:
+      DATABASE_URL: postgresql://becas:becas_dev@postgres:5432/becas_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NODE_ENV: production
+    volumes:
+      - uploads_data:/tmp/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: becas_frontend
+    ports:
+      - '8080:80'
+    depends_on:
+      - app
+
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:

@@ -10,7 +10,7 @@ RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /v
 COPY package*.json ./
 
 # Install dependencies (including devDependencies)
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Copy Prisma schema and config
 COPY prisma ./prisma/
@@ -50,6 +50,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma7.config.ts ./prisma7.config.ts
 
+# Ensure uploads directory exists
+RUN mkdir -p /tmp/uploads
+
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]
