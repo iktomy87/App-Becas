@@ -3,7 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ImportacionService } from './importacion.service';
 import { ImportacionProcessor } from './importacion.processor';
 import { PrismaModule } from '../prisma/prisma.module';
-import { PadronModule } from '../padron/padron.module';
+import { PadronService } from '../padron/padron.service';
 import { IMPORTACION_QUEUE } from './importacion.constants';
 
 // Igual que ImportacionModule, pero sin ImportacionController: este módulo
@@ -12,7 +12,6 @@ import { IMPORTACION_QUEUE } from './importacion.constants';
 @Module({
   imports: [
     PrismaModule,
-    PadronModule,
     BullModule.registerQueue({
       name: IMPORTACION_QUEUE,
       defaultJobOptions: {
@@ -22,6 +21,7 @@ import { IMPORTACION_QUEUE } from './importacion.constants';
       },
     }),
   ],
-  providers: [ImportacionService, ImportacionProcessor],
+  providers: [ImportacionService, ImportacionProcessor, PadronService],
 })
 export class ImportacionWorkerModule {}
+

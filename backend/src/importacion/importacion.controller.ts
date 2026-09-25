@@ -27,7 +27,6 @@ export class ImportacionController {
       destination: '/tmp/uploads',
       filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${extname(file.originalname)}`),
     }),
-    limits: { fileSize: 3 * 1024 * 1024 * 1024 },
   }))
   async subirPlanilla(
     @Param('convocatoriaId') convocatoriaId: string,

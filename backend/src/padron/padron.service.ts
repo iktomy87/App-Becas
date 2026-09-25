@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import * as ExcelJS from 'exceljs';
+import * as fs from 'fs';
+import * as readline from 'readline';
 
-// El maestro.xlsx tiene metadatos en filas 1-5; el header real está en la fila 6
+// El CSV del maestro tiene metadatos en filas 1-5; el header real está en la fila 6
 const HEADER_ROW = 6;
 
+// Mapeo de columnas del CSV a campos del modelo
 const COL_MAP: Record<string, string> = {
   'Esp.': 'especialidadCodigo',
   'Plan ': 'plan',
@@ -23,8 +25,58 @@ const COL_MAP: Record<string, string> = {
   'Cant.': 'aplazos',
 };
 
+const BATCH_SIZE = 100;
+
+function parseRow(headers: string[], values: string[]): any | null {
+  const raw: any = {};
+  headers.forEach((header, i) => {
+    const field = COL_MAP[header.trim()];
+    if (field) raw[field] = (values[i] ?? '').trim();
+  });
+
+  if (!raw.dni) return null;
+  raw.dni = String(raw.dni).replace(/\./g, '').trim();
+  if (!raw.dni || raw.dni === '0') return null;
+
+  raw.legajo = String(raw.legajo ?? '').trim();
+  raw.nombreCompleto = String(raw.nombreCompleto ?? '').trim();
+  raw.especialidadCodigo = raw.especialidadCodigo ? Number(raw.especialidadCodigo) : null;
+  raw.plan = raw.plan ? Number(raw.plan) : null;
+  raw.anioIngreso = raw.anioIngreso ? Number(String(raw.anioIngreso).replace(/\./g, '')) : null;
+  raw.regularizadas = Number(raw.regularizadas) || 0;
+  raw.cursando = Number(raw.cursando) || 0;
+  raw.aprobadas = Number(raw.aprobadas) || 0;
+  raw.promedio = parseFloat(String(raw.promedio ?? '0').replace(',', '.')) || 0;
+  raw.aplazos = Number(raw.aplazos) || 0;
+  raw.estado = String(raw.estado ?? 'Activo').trim();
+
+  return raw;
+}
+
+// Parsea una línea de CSV respetando comillas
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
 @Injectable()
 export class PadronService {
+  private readonly logger = new Logger(PadronService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findByDni(dni: string, convocatoriaId: string) {
@@ -40,86 +92,60 @@ export class PadronService {
   }
 
   async cargarMaestro(filePath: string, convocatoriaId: string): Promise<{ procesadas: number; errores: number }> {
-    // Leer workbook completo en memoria (heap ampliado a 4GB en package.json)
-    const workbook = new ExcelJS.Workbook();
-    if (filePath.toLowerCase().endsWith('.csv')) {
-      await workbook.csv.readFile(filePath);
-    } else {
-      await workbook.xlsx.readFile(filePath);
-    }
-    const ws = workbook.worksheets[0];
+    this.logger.log(`Procesando padrón: ${filePath}`);
 
+    const fileStream = fs.createReadStream(filePath);
+    const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+    let rowIndex = 0;
     let headers: string[] = [];
     let procesadas = 0;
     let errores = 0;
-    const BATCH_SIZE = 200;
     const batch: any[] = [];
 
-    const flush = async () => {
+    const flushBatch = async () => {
       if (batch.length === 0) return;
-      // Upsert concurrente en lote para mayor rendimiento
-      const ops = batch.map(row =>
+      const ops = batch.splice(0).map(row =>
         this.prisma.padronAcademico.upsert({
           where: { dni_convocatoriaId: { dni: row.dni, convocatoriaId } },
           create: { ...row, convocatoriaId },
           update: { ...row },
         })
         .then(() => { procesadas++; })
-        .catch(() => { errores++; })
+        .catch((e) => {
+          this.logger.warn(`Error upsert DNI=${row.dni}: ${e.message}`);
+          errores++;
+        })
       );
       await Promise.all(ops);
-      batch.length = 0;
     };
 
-    ws.eachRow((row, rowIndex) => {
-      if (rowIndex < HEADER_ROW) return;
+    for await (const line of rl) {
+      rowIndex++;
+      if (rowIndex < HEADER_ROW) continue;
+
+      const values = parseCsvLine(line);
+
       if (rowIndex === HEADER_ROW) {
-        row.eachCell((cell) => headers.push(String(cell.value ?? '').trim()));
-        return;
+        headers = values.map(h => h.trim());
+        this.logger.log(`Headers encontrados: ${headers.slice(0, 6).join(', ')}...`);
+        continue;
       }
 
-      const raw: any = {};
-      row.eachCell((cell, colNumber) => {
-        const header = headers[colNumber - 1];
-        const field = COL_MAP[header];
-        if (field) raw[field] = cell.value;
-      });
+      const row = parseRow(headers, values);
+      if (!row) continue;
 
-      if (!raw.dni) return;
-      raw.dni = String(raw.dni).replace(/\./g, '').trim();
-      if (!raw.dni || raw.dni === '0') return;
+      batch.push(row);
 
-      raw.legajo = String(raw.legajo ?? '').trim();
-      raw.nombreCompleto = String(raw.nombreCompleto ?? '').trim();
-      raw.especialidadCodigo = raw.especialidadCodigo ? Number(raw.especialidadCodigo) : null;
-      raw.plan = raw.plan ? Number(raw.plan) : null;
-      raw.anioIngreso = raw.anioIngreso ? Number(String(raw.anioIngreso).replace('.', '')) : null;
-      raw.regularizadas = Number(raw.regularizadas) || 0;
-      raw.cursando = Number(raw.cursando) || 0;
-      raw.aprobadas = Number(raw.aprobadas) || 0;
-      raw.promedio = parseFloat(String(raw.promedio ?? '0').replace(',', '.')) || 0;
-      raw.aplazos = Number(raw.aplazos) || 0;
-      raw.estado = String(raw.estado ?? 'Activo').trim();
-
-      batch.push(raw);
-    });
-
-    // Flush all at once after reading is complete
-    const CHUNK = 200;
-    for (let i = 0; i < batch.length; i += CHUNK) {
-      const chunk = batch.slice(i, i + CHUNK);
-      const ops = chunk.map(row =>
-        this.prisma.padronAcademico.upsert({
-          where: { dni_convocatoriaId: { dni: row.dni, convocatoriaId } },
-          create: { ...row, convocatoriaId },
-          update: { ...row },
-        })
-        .then(() => { procesadas++; })
-        .catch(() => { errores++; })
-      );
-      await Promise.all(ops);
+      if (batch.length >= BATCH_SIZE) {
+        await flushBatch();
+      }
     }
 
+    // Flush del último lote
+    await flushBatch();
+
+    this.logger.log(`Padrón procesado: ${procesadas} filas OK, ${errores} errores`);
     return { procesadas, errores };
   }
 }

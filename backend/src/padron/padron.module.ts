@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
-import { MulterModule } from '@nestjs/platform-express';
+import { BullModule } from '@nestjs/bullmq';
 import { PadronController } from './padron.controller';
 import { PadronService } from './padron.service';
+import { PadronProcessor } from './padron.processor';
+import { PADRON_QUEUE } from './padron.processor';
 
 @Module({
-  imports: [MulterModule.register({ dest: './uploads/padron' })],
+  imports: [
+    BullModule.registerQueue({ name: PADRON_QUEUE }),
+  ],
   controllers: [PadronController],
-  providers: [PadronService],
+  providers: [PadronService, PadronProcessor],
   exports: [PadronService],
 })
 export class PadronModule {}

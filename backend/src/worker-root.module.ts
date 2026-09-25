@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { ImportacionWorkerModule } from './importacion/importacion-worker.module';
+import { PadronWorkerModule } from './padron/padron-worker.module';
 
 // Módulo raíz que se bootstrapea en worker-main.ts (equivalente al AppModule
 // del proceso API, pero solo con lo que el worker necesita). El
@@ -19,6 +20,7 @@ import { ImportacionWorkerModule } from './importacion/importacion-worker.module
       },
     }),
     ImportacionWorkerModule,
+    PadronWorkerModule,
   ],
 })
 export class WorkerRootModule {}

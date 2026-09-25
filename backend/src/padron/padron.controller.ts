@@ -1,21 +1,25 @@
-import { Controller, Post, Param, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, Get, Param, UploadedFile, UseInterceptors, BadRequestException, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes } from '@nestjs/swagger';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { PadronService } from './padron.service';
+import { ApiTags, ApiOperation, ApiConsumes } from '@nestjs/swagger';
+import { PADRON_QUEUE, JobCargarPadron } from './padron.processor';
 
 @ApiTags('Padrón')
 @Controller('convocatorias/:convocatoriaId/padron')
 export class PadronController {
-  constructor(private readonly service: PadronService) {}
+  constructor(
+    @InjectQueue(PADRON_QUEUE) private readonly padronQueue: Queue<JobCargarPadron>,
+  ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cargar maestro.xlsx como padrón académico de la convocatoria' })
+  @ApiOperation({ summary: 'Cargar maestro.xlsx como padrón académico de la convocatoria (procesado en background)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads/padron',
+      destination: '/tmp/uploads',
       filename: (_req, file, cb) => cb(null, `padron_${Date.now()}${extname(file.originalname)}`),
     }),
   }))
@@ -23,7 +27,29 @@ export class PadronController {
     @Param('convocatoriaId') convocatoriaId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const result = await this.service.cargarMaestro(file.path, convocatoriaId);
-    return { mensaje: 'Padrón cargado exitosamente', ...result };
+    if (!file) throw new BadRequestException('Falta el archivo');
+
+    const job = await this.padronQueue.add('cargar-padron', {
+      convocatoriaId,
+      filePath: file.path,
+      originalname: file.originalname,
+    });
+
+    return { jobId: job.id, mensaje: 'Padrón en proceso. Verificá el estado con el jobId.' };
+  }
+
+  @Get('status/:jobId')
+  @ApiOperation({ summary: 'Estado del job de carga de padrón' })
+  async getStatus(@Param('jobId') jobId: string) {
+    const job = await this.padronQueue.getJob(jobId);
+    if (!job) throw new NotFoundException('Job no encontrado');
+
+    const state = await job.getState();
+    return {
+      state,
+      progress: job.progress,
+      resultado: state === 'completed' ? job.returnvalue : undefined,
+      error: state === 'failed' ? job.failedReason : undefined,
+    };
   }
 }
