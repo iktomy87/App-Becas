@@ -1,6 +1,13 @@
 import {
-  Controller, Post, Get, Param, UploadedFile, UseInterceptors,
-  BadRequestException, NotFoundException,
+  Controller,
+  Post,
+  Get,
+  Param,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -16,28 +23,39 @@ import { JobCargarPlanilla } from './importacion.processor';
 @Controller('convocatorias/:convocatoriaId')
 export class ImportacionController {
   constructor(
-    @InjectQueue(IMPORTACION_QUEUE) private readonly importacionQueue: Queue<JobCargarPlanilla>,
+    @InjectQueue(IMPORTACION_QUEUE)
+    private readonly importacionQueue: Queue<JobCargarPlanilla>,
     private readonly prisma: PrismaService,
     private readonly importacionService: ImportacionService,
   ) {}
 
   @Post(['planilla', 'planillas'])
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: '/tmp/uploads',
-      filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${extname(file.originalname)}`),
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: '/tmp/uploads',
+        filename: (_req, file, cb) =>
+          cb(
+            null,
+            `${Date.now()}-${Math.random().toString(36).slice(2)}${extname(file.originalname)}`,
+          ),
+      }),
     }),
-  }))
+  )
   async subirPlanilla(
     @Param('convocatoriaId') convocatoriaId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('Falta el archivo');
 
-    const conv = await this.prisma.convocatoria.findUnique({ where: { id: convocatoriaId } });
+    const conv = await this.prisma.convocatoria.findUnique({
+      where: { id: convocatoriaId },
+    });
     if (!conv) throw new NotFoundException('Convocatoria no encontrada');
     if (conv.estado !== EstadoConvocatoria.ABIERTA) {
-      throw new BadRequestException(`No se puede cargar planilla: la convocatoria está en estado ${conv.estado} (RN-02)`);
+      throw new BadRequestException(
+        `No se puede cargar planilla: la convocatoria está en estado ${conv.estado} (RN-02)`,
+      );
     }
 
     const job = await this.importacionQueue.add('cargar-planilla', {
@@ -72,8 +90,16 @@ export class ImportacionController {
   }
 
   @Get('planillas/inscripciones')
-  getInscripciones(@Param('convocatoriaId') convocatoriaId: string) {
-    return this.importacionService.getInscripciones(convocatoriaId);
+  getInscripciones(
+    @Param('convocatoriaId') convocatoriaId: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+  ) {
+    return this.importacionService.getInscripciones(
+      convocatoriaId,
+      +page,
+      +limit,
+    );
   }
 
   @Get('planillas/:cargaId')

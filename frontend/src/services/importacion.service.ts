@@ -1,26 +1,45 @@
 import { http } from './http';
-import type { CargaPlanilla } from './types';
+import type {
+  CargaPlanilla,
+  EstadoJob,
+  InscripcionesPage,
+  ResultadoImportacionPadron,
+  ResultadoImportacionPlanilla,
+} from './types';
+
 
 export const importacionService = {
   /** POST /convocatorias/:convocatoriaId/planillas  (multipart) */
   cargar: (convocatoriaId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return http.upload<{ jobId?: string } | CargaPlanilla>(`/convocatorias/${convocatoriaId}/planillas`, form);
+    return http.upload<{ jobId: string }>(
+      `/convocatorias/${convocatoriaId}/planillas`,
+      form,
+    );
   },
 
   /** GET /convocatorias/:convocatoriaId/planilla/status/:jobId */
   status: (convocatoriaId: string, jobId: string) =>
-    http.get<{ state: string; progress: any; resultado?: any; error?: string }>(
-      `/convocatorias/${convocatoriaId}/planilla/status/${jobId}`
+    http.get<EstadoJob<ResultadoImportacionPlanilla>>(
+      `/convocatorias/${convocatoriaId}/planilla/status/${jobId}`,
     ),
 
   /** POST /convocatorias/:convocatoriaId/padron  (multipart) */
   cargarPadron: (convocatoriaId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return http.upload<any>(`/convocatorias/${convocatoriaId}/padron`, form);
+    return http.upload<{ jobId: string; mensaje: string }>(
+      `/convocatorias/${convocatoriaId}/padron`,
+      form,
+    );
   },
+
+  /** GET /convocatorias/:convocatoriaId/padron/status/:jobId */
+  statusPadron: (convocatoriaId: string, jobId: string) =>
+    http.get<EstadoJob<ResultadoImportacionPadron>>(
+      `/convocatorias/${convocatoriaId}/padron/status/${jobId}`,
+    ),
 
   /** GET /convocatorias/:convocatoriaId/planillas */
   listar: (convocatoriaId: string) =>
@@ -28,10 +47,13 @@ export const importacionService = {
 
   /** GET /convocatorias/:convocatoriaId/planillas/:cargaId */
   obtener: (convocatoriaId: string, cargaId: string) =>
-    http.get<CargaPlanilla>(`/convocatorias/${convocatoriaId}/planillas/${cargaId}`),
+    http.get<CargaPlanilla>(
+      `/convocatorias/${convocatoriaId}/planillas/${cargaId}`,
+    ),
 
-  /** GET /convocatorias/:convocatoriaId/planillas/inscripciones */
-  listarInscripciones: (convocatoriaId: string) =>
-    http.get<any[]>(`/convocatorias/${convocatoriaId}/planillas/inscripciones`),
+  /** GET /convocatorias/:convocatoriaId/planillas/inscripciones (paginado) */
+  listarInscripciones: (convocatoriaId: string, page = 1, limit = 50) =>
+    http.get<InscripcionesPage>(
+      `/convocatorias/${convocatoriaId}/planillas/inscripciones?page=${page}&limit=${limit}`,
+    ),
 };
-

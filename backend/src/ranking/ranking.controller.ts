@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -10,19 +18,26 @@ export class RankingController {
   constructor(private readonly service: RankingService) {}
 
   @Post('calcular')
-  @ApiOperation({ summary: 'Calcular ranking de la convocatoria (RF-12, RF-13)' })
+  @ApiOperation({
+    summary: 'Calcular ranking de la convocatoria (RF-12, RF-13)',
+  })
   calcular(@Param('convocatoriaId') convocatoriaId: string) {
     return this.service.calcularRanking(convocatoriaId);
   }
 
   @Post('importar')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads/planillas',
-      filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: '/tmp/uploads',
+        filename: (_req, file, cb) =>
+          cb(null, `${Date.now()}-${file.originalname}`),
+      }),
     }),
-  }))
-  @ApiOperation({ summary: 'Importar orden de mérito desde archivo (CSV/Excel)' })
+  )
+  @ApiOperation({
+    summary: 'Importar orden de mérito desde archivo (CSV/Excel)',
+  })
   async importar(
     @Param('convocatoriaId') convocatoriaId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -43,7 +58,9 @@ export class RankingController {
   }
 
   @Get('estudiante/:dni')
-  @ApiOperation({ summary: 'Obtener desglose de puntaje de un estudiante (RF-15)' })
+  @ApiOperation({
+    summary: 'Obtener desglose de puntaje de un estudiante (RF-15)',
+  })
   getDesglose(
     @Param('convocatoriaId') convocatoriaId: string,
     @Param('dni') dni: string,

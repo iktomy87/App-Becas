@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstadoConvocatoria } from '@prisma/client';
-import { CreateConvocatoriaDto, UpdateConvocatoriaDto, CreateRankingConfigDto } from './dto/convocatoria.dto';
+import {
+  CreateConvocatoriaDto,
+  UpdateConvocatoriaDto,
+  CreateRankingConfigDto,
+} from './dto/convocatoria.dto';
 
 @Injectable()
 export class ConvocatoriasService {
@@ -47,7 +55,9 @@ export class ConvocatoriasService {
       where: { id },
       data: {
         ...(dto.nombre && { nombre: dto.nombre }),
-        ...(dto.fechaApertura && { fechaApertura: new Date(dto.fechaApertura) }),
+        ...(dto.fechaApertura && {
+          fechaApertura: new Date(dto.fechaApertura),
+        }),
         ...(dto.fechaCierre && { fechaCierre: new Date(dto.fechaCierre) }),
       },
     });
@@ -56,7 +66,9 @@ export class ConvocatoriasService {
   async cerrar(id: string) {
     const conv = await this.findOne(id);
     if (conv.estado !== EstadoConvocatoria.ABIERTA) {
-      throw new ConflictException(`La convocatoria no está en estado ABIERTA (actual: ${conv.estado})`);
+      throw new ConflictException(
+        `La convocatoria no está en estado ABIERTA (actual: ${conv.estado})`,
+      );
     }
     return this.prisma.convocatoria.update({
       where: { id },
@@ -75,9 +87,15 @@ export class ConvocatoriasService {
         criterioDesempate: dto.criterioDesempate ?? 'PROMEDIO',
       },
       update: {
-        ...(dto.minMateriasCursando !== undefined && { minMateriasCursando: dto.minMateriasCursando }),
-        ...(dto.minRegularizadas !== undefined && { minRegularizadas: dto.minRegularizadas }),
-        ...(dto.criterioDesempate && { criterioDesempate: dto.criterioDesempate }),
+        ...(dto.minMateriasCursando !== undefined && {
+          minMateriasCursando: dto.minMateriasCursando,
+        }),
+        ...(dto.minRegularizadas !== undefined && {
+          minRegularizadas: dto.minRegularizadas,
+        }),
+        ...(dto.criterioDesempate && {
+          criterioDesempate: dto.criterioDesempate,
+        }),
         version: { increment: 1 },
       },
     });

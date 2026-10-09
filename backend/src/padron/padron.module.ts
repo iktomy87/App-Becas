@@ -6,9 +6,7 @@ import { PadronProcessor } from './padron.processor';
 import { PADRON_QUEUE } from './padron.processor';
 
 @Module({
-  imports: [
-    BullModule.registerQueue({ name: PADRON_QUEUE }),
-  ],
+  imports: [BullModule.registerQueue({ name: PADRON_QUEUE })],
   controllers: [PadronController],
   providers: [PadronService, PadronProcessor],
   exports: [PadronService],

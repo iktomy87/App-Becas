@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstadoConvocatoria, EstadoPropuesta } from '@prisma/client';
 import { CreatePropuestaDto, UpdateVacantesDto } from './dto/propuesta.dto';
@@ -43,9 +47,13 @@ export class PropuestasService {
   async updateVacantes(id: string, dto: UpdateVacantesDto) {
     const prop = await this.findOne(id);
     // RN-02: no modificar vacantes si la convocatoria está cerrada
-    const conv = await this.prisma.convocatoria.findUnique({ where: { id: prop.convocatoriaId } });
+    const conv = await this.prisma.convocatoria.findUnique({
+      where: { id: prop.convocatoriaId },
+    });
     if (conv && conv.estado !== EstadoConvocatoria.ABIERTA) {
-      throw new ConflictException('No se pueden modificar vacantes con la convocatoria cerrada (RN-02)');
+      throw new ConflictException(
+        'No se pueden modificar vacantes con la convocatoria cerrada (RN-02)',
+      );
     }
 
     const valorAnterior = prop.vacantesTotal;
@@ -80,7 +88,8 @@ export class PropuestasService {
       const prop = await this.prisma.propuesta.create({
         data: {
           idExterno: String(row.numero),
-          titulo: row.proyecto || row.area_servicio || row.area_investigacion || '',
+          titulo:
+            row.proyecto || row.area_servicio || row.area_investigacion || '',
           tipo,
           responsableNombre: row.responsable_ayn ?? '',
           responsableEmail: row.responsable_email ?? '',

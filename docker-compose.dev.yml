@@ -1,0 +1,159 @@
+# =============================================================
+# docker-compose.dev.yml  –  Desarrollo local (hot-reload)
+#
+# Uso:
+#   cp .env.example .env          # una sola vez; completar POSTGRES_PASSWORD
+#   docker compose -f docker-compose.dev.yml up
+#
+# Hot-reload:
+#   - Backend  : NestJS `start:dev` (--watch) via ts-node
+#   - Frontend : Vite dev server (HMR)
+#
+# Los archivos fuente se montan como volúmenes, por lo que
+# los cambios en el host se reflejan inmediatamente.
+# =============================================================
+
+services:
+
+  # ── Base de datos ─────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: becas_postgres_dev
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-becas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (definilo en .env)}
+      POSTGRES_DB:       ${POSTGRES_DB:-becas_db}
+    ports:
+      - '5432:5432'       # acceso directo desde host (p.ej. TablePlus, DBeaver)
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-becas} -d ${POSTGRES_DB:-becas_db}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Cache / Queue ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: becas_redis_dev
+    ports:
+      - '6379:6379'       # acceso directo desde host (p.ej. RedisInsight)
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (API – hot-reload) ────────────────────────────
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: deps          # instala deps (dev incluidas) pero NO compila
+    container_name: becas_app_dev
+    # Reemplaza el CMD del Dockerfile: usa nest start --watch
+    #
+    # `db push`, NO `migrate deploy`: el repo no tiene prisma/migrations, así
+    # que `migrate deploy` no encuentra nada, avisa "No migration found" y sale
+    # con éxito sin crear ninguna tabla. Después el primer request moría con
+    # "The table public.convocatorias does not exist". `db push` sincroniza el
+    # esquema desde prisma/schema.prisma, que es la fuente de verdad acá.
+    command: >
+      sh -c "node_modules/.bin/prisma generate &&
+             node_modules/.bin/prisma db push &&
+             npm run start:api:dev"
+    environment:
+      NODE_ENV:     development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-becas}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-becas_db}
+      REDIS_HOST:   redis
+      REDIS_PORT:   6379
+    ports:
+      - '3000:3000'         # API
+      - '9229:9229'         # puerto de debug Node.js (opcional)
+    volumes:
+      # Código fuente montado → los cambios se detectan al instante
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
+      - ./backend/prisma7.config.ts:/app/prisma7.config.ts
+      # Uploads persistidos
+      - uploads_dev_data:/tmp/uploads
+      # node_modules dentro del contenedor (no sobreescrito por el montaje anterior)
+      - backend_nm:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Backend (Worker – hot-reload) ─────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: deps
+    container_name: becas_worker_dev
+    command: npm run start:worker:dev
+    environment:
+      NODE_ENV:     development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-becas}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-becas_db}
+      REDIS_HOST:   redis
+      REDIS_PORT:   6379
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
+      - ./backend/prisma7.config.ts:/app/prisma7.config.ts
+      - uploads_dev_data:/tmp/uploads
+      - backend_nm:/app/node_modules  # comparte el mismo node_modules que `app`
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  # ── Frontend (Vite dev server – HMR) ─────────────────────
+  frontend:
+    image: node:20-slim
+    container_name: becas_frontend_dev
+    working_dir: /app
+    # Instala deps si no existen y arranca Vite
+    command: >
+      sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
+    environment:
+      # Destino del proxy de Vite. SIN prefijo VITE_ a propósito: si lo tuviera,
+      # Vite lo metería en el bundle del navegador, que no puede resolver el
+      # nombre `app` (sólo existe dentro de la red de compose) y todas las
+      # peticiones fallan con NetworkError. Ver vite.config.ts.
+      API_PROXY_TARGET: http://app:3000
+    ports:
+      - '5173:5173'         # Vite default → abre http://localhost:5173
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
+      - frontend_nm:/app/node_modules
+    depends_on:
+      - app
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  uploads_dev_data:
+  backend_nm:   # node_modules del backend (aislado del host)
+  frontend_nm:  # node_modules del frontend (aislado del host)

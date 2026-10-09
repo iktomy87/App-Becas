@@ -1,11 +1,20 @@
-import { IsString, IsEnum, IsInt, IsOptional, IsEmail, Min } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsEmail,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TipoPropuesta } from '@prisma/client';
 
 export class CreatePropuestaDto {
   @ApiProperty() @IsString() idExterno: string;
   @ApiProperty() @IsString() titulo: string;
-  @ApiProperty({ enum: TipoPropuesta }) @IsEnum(TipoPropuesta) tipo: TipoPropuesta;
+  @ApiProperty({ enum: TipoPropuesta })
+  @IsEnum(TipoPropuesta)
+  tipo: TipoPropuesta;
   @ApiProperty() @IsString() responsableNombre: string;
   @ApiProperty() @IsEmail() responsableEmail: string;
   @ApiProperty() @IsInt() @Min(1) vacantesTotal: number;

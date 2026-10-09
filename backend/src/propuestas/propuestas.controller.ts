@@ -1,6 +1,13 @@
 import {
-  Controller, Get, Post, Put, Param, Body,
-  Query, UploadedFile, UseInterceptors,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Body,
+  Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiQuery } from '@nestjs/swagger';
@@ -46,14 +53,19 @@ export class PropuestasController {
   }
 
   @Post('importar-xls')
-  @ApiOperation({ summary: 'Importar propuestas masivamente desde XLS de solicitudes' })
+  @ApiOperation({
+    summary: 'Importar propuestas masivamente desde XLS de solicitudes',
+  })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads/propuestas',
-      filename: (_req, file, cb) => cb(null, `${Date.now()}${extname(file.originalname)}`),
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/propuestas',
+        filename: (_req, file, cb) =>
+          cb(null, `${Date.now()}${extname(file.originalname)}`),
+      }),
     }),
-  }))
+  )
   async importarXls(
     @UploadedFile() file: Express.Multer.File,
     @Query('convocatoriaId') convocatoriaId: string,

@@ -22,10 +22,12 @@ export class ConvocatoriaFacadeService {
     await this.convService.cerrar(convocatoriaId);
 
     // 2. Calcular ranking
-    const rankingResult = await this.rankingService.calcularRanking(convocatoriaId);
+    const rankingResult =
+      await this.rankingService.calcularRanking(convocatoriaId);
 
     // 3. Asignar
-    const asignacionResult = await this.asignacionEngine.ejecutar(convocatoriaId);
+    const asignacionResult =
+      await this.asignacionEngine.ejecutar(convocatoriaId);
 
     return {
       mensaje: 'Proceso completado exitosamente',

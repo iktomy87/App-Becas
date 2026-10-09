@@ -24,14 +24,24 @@ export class PadronProcessor extends WorkerHost {
 
   async process(job: Job<JobCargarPadron>) {
     const { convocatoriaId, filePath, originalname } = job.data;
-    this.logger.log(`Iniciando carga de padrón job=${job.id} convocatoria=${convocatoriaId} archivo=${originalname}`);
+    this.logger.log(
+      `Iniciando carga de padrón job=${job.id} convocatoria=${convocatoriaId} archivo=${originalname}`,
+    );
 
     try {
-      const resultado = await this.padronService.cargarMaestro(filePath, convocatoriaId);
-      this.logger.log(`Padrón cargado job=${job.id}: ${resultado.procesadas} procesadas, ${resultado.errores} errores`);
+      const resultado = await this.padronService.cargarMaestro(
+        filePath,
+        convocatoriaId,
+      );
+      this.logger.log(
+        `Padrón cargado job=${job.id}: ${resultado.procesadas} procesadas, ${resultado.errores} errores`,
+      );
       return resultado;
     } catch (err: any) {
-      this.logger.error(`Falló carga de padrón job=${job.id}: ${err.message}`, err.stack);
+      this.logger.error(
+        `Falló carga de padrón job=${job.id}: ${err.message}`,
+        err.stack,
+      );
       throw err;
     }
   }

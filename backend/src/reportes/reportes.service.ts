@@ -22,12 +22,23 @@ export class ReportesService {
       },
     });
 
-    if (!corrida) throw new Error('No hay corrida de asignación vigente para esta convocatoria');
+    if (!corrida)
+      throw new Error(
+        'No hay corrida de asignación vigente para esta convocatoria',
+      );
 
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Resultado Asignación');
 
-    ws.addRow(['DNI', 'Legajo', 'Apellido y Nombre', 'Estado', 'Área Asignada', 'ID Propuesta', 'Preferencia Satisfecha']);
+    ws.addRow([
+      'DNI',
+      'Legajo',
+      'Apellido y Nombre',
+      'Estado',
+      'Área Asignada',
+      'ID Propuesta',
+      'Preferencia Satisfecha',
+    ]);
     ws.getRow(1).font = { bold: true };
 
     for (const r of corrida.resultados) {

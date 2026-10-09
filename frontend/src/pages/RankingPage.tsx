@@ -3,20 +3,64 @@ import './PanelPrincipal.css';
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { rankingService } from '../services/ranking.service';
-import type { ResultadoRanking } from '../services/types';
+import { convocatoriasService } from '../services/convocatorias.service';
+import { seleccionarConvocatoriaActiva } from '../hooks/convocatoriaActiva';
+import type { Convocatoria, ResultadoRanking } from '../services/types';
 
 export function RankingPage() {
-  const { convocatoriaId = '0408ab9c-363b-4b5f-9dc0-aeefdc2bc631' } = useParams(); // hardcoded fallback for dev if needed
+  const { convocatoriaId: paramId } = useParams();
+  const [convocatoria, setConvocatoria] = useState<Convocatoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [resultados, setResultados] = useState<ResultadoRanking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const convocatoriaId = convocatoria?.id;
+
+  // La ruta `/ranking` no declara `:convocatoriaId`, así que `useParams()` llega
+  // vacío. Antes esto caía a un UUID hardcodeado que no existe en la base: la
+  // API respondía 200 con `data: []` —sin ningún error— y la página mostraba
+  // "no hay resultados" para siempre. Ahora se resuelve la convocatoria activa
+  // con la misma regla que usa el panel principal, o la de la URL si algún día
+  // se navega con parámetro.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolver() {
+      try {
+        const conv = paramId
+          ? await convocatoriasService.obtener(paramId)
+          : seleccionarConvocatoriaActiva(await convocatoriasService.listar());
+        if (cancelled) return;
+        setConvocatoria(conv ?? null);
+        // Sin convocatoria no va a haber fetch de ranking que baje `loading`.
+        if (!conv) setLoading(false);
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err);
+          setLoading(false);
+        }
+      }
+    }
+
+    void resolver();
+    return () => { cancelled = true; };
+  }, [paramId]);
+
+  // Filas por página: las filas de ranking son compactas; 50 sigue el default
+  // del backend (que ya paginaba el endpoint pero la pantalla pedía 1000).
+  const PAGE_SIZE = 50;
+  const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   const fetchRanking = async () => {
+    if (!convocatoriaId) return;
     setLoading(true);
     try {
-      const res = await rankingService.listar(convocatoriaId, 1, 1000);
+      const res = await rankingService.listar(convocatoriaId, page, PAGE_SIZE);
       setResultados(res.data);
+      setTotal(res.total);
     } catch (err) {
       console.error(err);
     } finally {
@@ -25,12 +69,12 @@ export function RankingPage() {
   };
 
   useEffect(() => {
-    fetchRanking();
-  }, [convocatoriaId]);
+    void fetchRanking();
+  }, [convocatoriaId, page]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !convocatoriaId) return;
     
     setUploading(true);
     try {
@@ -106,7 +150,7 @@ export function RankingPage() {
             ref={fileInputRef}
             onChange={handleFileChange}
           />
-          <button className="btn outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <button className="btn outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || !convocatoriaId}>
             <span className="ic">⭱</span> {uploading ? 'Calculando...' : 'Calcular con antecedentes'}
           </button>
           <button className="btn outline">
@@ -116,14 +160,16 @@ export function RankingPage() {
       </div>
 
       <div className="conv-row">
-        <span className="conv-label">Convocatoria Activa</span>
-        <span className="badge">Activo</span>
+        <span className="conv-label">
+          {convocatoria ? convocatoria.nombre : 'Sin convocatoria activa'}
+        </span>
+        {convocatoria && <span className="badge">Activo</span>}
       </div>
 
       <div className="divider-orange" />
 
       <p className="updated" style={{ color: 'var(--text-gray)', fontSize: '13px', margin: '0 0 20px 0' }}>
-        Resultados totales: {resultados.length} estudiantes
+        Resultados totales: {total} estudiantes
       </p>
 
       <div className="filters">
@@ -164,14 +210,22 @@ export function RankingPage() {
                 <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>No hay resultados de ranking cargados. Usa "Cargar orden de mérito".</td>
               </tr>
             ) : (
-              resultados.sort((a, b) => Number(b.puntajeTotal) - Number(a.puntajeTotal)).map((r, i) => (
+              resultados.map((r) => (
                 <tr key={r.id}>
-                  <td>{i + 1}</td>
+                  {/* La posición la calcula el backend al desempatar; antes se
+                      re-ordenaba en el cliente y se pintaba el índice del
+                      array, que no coincide con el ranking real. */}
+                  <td>{r.posicion ?? '—'}</td>
                   <td>
                     <p className="student-name">{r.padron?.nombreCompleto}</p>
                     <p className="student-meta">DNI: {r.padron?.dni} - Leg. {r.padron?.legajo}</p>
                   </td>
-                  <td>-</td>
+                  <td>
+                    {r.padron?.especialidad
+                      ?? (r.padron?.especialidadCodigo != null
+                        ? `Esp. ${r.padron.especialidadCodigo}`
+                        : '—')}
+                  </td>
                   <td>{r.padron?.promedio}</td>
                   <td className="factor-cell">{Number(r.puntajeTotal).toFixed(2)}</td>
                   <td>{r.padron?.regularizadas}</td>
@@ -185,6 +239,27 @@ export function RankingPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="paginacion">
+        <button
+          className="btn outline"
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+        >
+          ← Anterior
+        </button>
+        <span>
+          Página {page} de {totalPaginas} · {total}{' '}
+          {total === 1 ? 'estudiante' : 'estudiantes'}
+        </span>
+        <button
+          className="btn outline"
+          disabled={page >= totalPaginas}
+          onClick={() => setPage(page + 1)}
+        >
+          Siguiente →
+        </button>
       </div>
     </main>
   );

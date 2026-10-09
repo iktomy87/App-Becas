@@ -37,7 +37,9 @@ export function RankingTable({ rows, emptyRows = 2, onVerFicha }: RankingTablePr
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.posicion}>
+          // `dni` y no `posicion`: las filas sin posición llegan como 0 y
+          // colisionarían en el key.
+          <tr key={row.dni}>
             <td>{row.posicion}</td>
 
             <td>

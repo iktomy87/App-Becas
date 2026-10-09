@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react';
 import { convocatoriasService } from '../services/convocatorias.service';
 import { rankingService }       from '../services/ranking.service';
 import { importacionService }   from '../services/importacion.service';
-import type { Convocatoria, ResultadoRanking, CargaPlanilla } from '../services/types';
+import { seleccionarConvocatoriaActiva } from './convocatoriaActiva';
+import type {
+  Convocatoria,
+  ResultadoRanking,
+  CargaPlanilla,
+  ProgresoImportacion,
+  ResultadoImportacionPadron,
+  ResultadoImportacionPlanilla,
+} from '../services/types';
 
 export interface PanelState {
   convocatoria:  Convocatoria | null;
@@ -13,12 +21,18 @@ export interface PanelState {
   error:         string | null;
   /** Recarga todos los datos del panel */
   refresh:       () => void;
-  /** Sube una planilla y refresca */
-  cargarPlanilla: (file: File) => Promise<CargaPlanilla>;
-  /** Sube un padrón y refresca */
-  cargarPadron: (file: File) => Promise<any>;
+  /**
+   * Sube una planilla, espera al worker y devuelve el reporte de la carga.
+   *
+   * Antes declaraba `Promise<CargaPlanilla>` pero devolvía el resultado del job
+   * (`ResultadoImportacionPlanilla`), que es otra forma: por eso el consumidor
+   * tenía que castear a `any` para leer los errores.
+   */
+  cargarPlanilla: (file: File) => Promise<ResultadoImportacionPlanilla>;
+  /** Sube un padrón, espera al worker y devuelve el conteo de filas. */
+  cargarPadron: (file: File) => Promise<ResultadoImportacionPadron>;
   /** Estado del progreso de carga asincrónica */
-  uploadProgress: { rowsProcessed?: number } | null;
+  uploadProgress: ProgresoImportacion | null;
 }
 
 /**
@@ -44,9 +58,7 @@ export function usePanelPrincipal(): PanelState {
       try {
         // 1. Obtener todas las convocatorias y usar la primera ABIERTA
         const convocatorias = await convocatoriasService.listar();
-        const activa = convocatorias.find(
-          (c) => c.estado === 'ABIERTA' || c.estado === 'EN_RANKING',
-        ) ?? convocatorias[0] ?? null;
+        const activa = seleccionarConvocatoriaActiva(convocatorias);
 
         if (cancelled) return;
         setConvocatoria(activa);
@@ -80,9 +92,9 @@ export function usePanelPrincipal(): PanelState {
   }, [tick]);
 
   function refresh() { setTick((t) => t + 1); }
-  const [uploadProgress, setUploadProgress] = useState<{ rowsProcessed?: number } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<ProgresoImportacion | null>(null);
 
-  async function cargarPlanilla(file: File) {
+  async function cargarPlanilla(file: File): Promise<ResultadoImportacionPlanilla> {
     let targetId = convocatoria?.id;
 
     if (!targetId) {
@@ -99,33 +111,34 @@ export function usePanelPrincipal(): PanelState {
     }
 
     setUploadProgress(null);
-    let res: any = await importacionService.cargar(targetId, file);
-    
-    if (res?.jobId) {
-      // Es asincrónico, hacemos polling
-      while (true) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const status = await importacionService.status(targetId, res.jobId);
-        
-        if (status.progress) {
-          setUploadProgress(status.progress);
-        }
+    const { jobId } = await importacionService.cargar(targetId, file);
 
-        if (status.state === 'completed') {
-          res = status.resultado;
-          break;
-        } else if (status.state === 'failed') {
-          throw new Error(status.error || 'La importación falló');
+    // El procesamiento es asíncrono: se sondea el job hasta que termina.
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const status = await importacionService.status(targetId, jobId);
+
+      const progreso = status.progress;
+      if (progreso && typeof progreso !== 'number' && progreso.rowsProcessed != null) {
+        setUploadProgress(progreso);
+      }
+
+      if (status.state === 'completed') {
+        setUploadProgress(null);
+        refresh();
+        if (!status.resultado) {
+          throw new Error('La importación terminó sin devolver resultado');
         }
+        return status.resultado;
+      }
+      if (status.state === 'failed') {
+        setUploadProgress(null);
+        throw new Error(status.error || 'La importación falló');
       }
     }
-
-    setUploadProgress(null);
-    refresh();
-    return res;
   }
 
-  async function cargarPadron(file: File) {
+  async function cargarPadron(file: File): Promise<ResultadoImportacionPadron> {
     let targetId = convocatoria?.id;
 
     if (!targetId) {
@@ -141,9 +154,28 @@ export function usePanelPrincipal(): PanelState {
       targetId = nuevaConv.id;
     }
 
-    const res = await importacionService.cargarPadron(targetId, file);
-    refresh();
-    return res;
+    setUploadProgress(null);
+    const { jobId } = await importacionService.cargarPadron(targetId, file);
+
+    // Polling mientras el worker procesa el archivo
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const status = await importacionService.statusPadron(targetId, jobId);
+
+      if (status.state === 'completed') {
+        setUploadProgress(null);
+        refresh();
+        if (!status.resultado) {
+          throw new Error('El padrón se procesó sin devolver resultado');
+        }
+        return status.resultado;
+      }
+      if (status.state === 'failed') {
+        setUploadProgress(null);
+        throw new Error(status.error || 'El procesamiento del padrón falló');
+      }
+      // sigue esperando si está en 'waiting' o 'active'
+    }
   }
 
   return { convocatoria, ranking, rankingTotal, cargas, loading, error, refresh, cargarPlanilla, cargarPadron, uploadProgress };

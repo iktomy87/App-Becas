@@ -26,7 +26,9 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  logger.log('Worker de importación escuchando jobs en la cola "importacion"...');
+  logger.log(
+    'Worker de importación escuchando jobs en la cola "importacion"...',
+  );
 
   // Apagado prolijo: BullMQ necesita terminar/soltar el job en curso antes
   // de que el proceso muera, si no puede quedar marcado como "stalled".

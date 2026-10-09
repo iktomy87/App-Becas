@@ -1,0 +1,117 @@
+# =============================================================
+# docker-compose.prod.yml  –  Producción
+#
+# Uso:
+#   cp .env.prod.example .env.prod    # una sola vez; completar secretos
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up --build -d
+#
+# IMPORTANTE: usar `--env-file .env.prod`. El `.env` de desarrollo (raíz)
+# también define POSTGRES_PASSWORD; sin este flag, Compose lo tomaría y la base
+# de producción arrancaría con la clave de desarrollo.
+#
+# Variables requeridas (.env.prod):
+#   POSTGRES_PASSWORD (obligatoria), POSTGRES_USER, POSTGRES_DB, FRONTEND_PORT
+# =============================================================
+
+services:
+
+  # ── Base de datos ─────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: becas_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-becas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB:       ${POSTGRES_DB:-becas_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-becas} -d ${POSTGRES_DB:-becas_db}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No exponer el puerto hacia el host en producción
+    expose:
+      - '5432'
+
+  # ── Cache / Queue ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: becas_redis_prod
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - '6379'
+
+  # ── Backend (API) ─────────────────────────────────────────
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runner          # última etapa del multi-stage (imagen mínima)
+      cache_from:
+        - becas_backend:prod
+    image: becas_backend:prod
+    container_name: becas_app_prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-becas}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-becas_db}
+      REDIS_HOST:   redis
+      REDIS_PORT:   6379
+    volumes:
+      - uploads_data:/tmp/uploads
+    expose:
+      - '3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Backend (Worker BullMQ) ───────────────────────────────
+  worker:
+    image: becas_backend:prod   # reutiliza la imagen ya construida por `app`
+    pull_policy: never
+    container_name: becas_worker_prod
+    restart: unless-stopped
+    command: ['node', 'dist/worker-main.js']
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-becas}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-becas_db}
+      REDIS_HOST:   redis
+      REDIS_PORT:   6379
+    volumes:
+      - uploads_data:/tmp/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  # ── Frontend (nginx estático) ─────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: becas_frontend_prod
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-80}:80'
+    depends_on:
+      - app
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:

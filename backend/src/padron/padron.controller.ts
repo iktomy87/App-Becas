@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Param, UploadedFile, UseInterceptors, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -11,18 +20,25 @@ import { PADRON_QUEUE, JobCargarPadron } from './padron.processor';
 @Controller('convocatorias/:convocatoriaId/padron')
 export class PadronController {
   constructor(
-    @InjectQueue(PADRON_QUEUE) private readonly padronQueue: Queue<JobCargarPadron>,
+    @InjectQueue(PADRON_QUEUE)
+    private readonly padronQueue: Queue<JobCargarPadron>,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cargar maestro.xlsx como padrón académico de la convocatoria (procesado en background)' })
+  @ApiOperation({
+    summary:
+      'Cargar maestro.xlsx como padrón académico de la convocatoria (procesado en background)',
+  })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: '/tmp/uploads',
-      filename: (_req, file, cb) => cb(null, `padron_${Date.now()}${extname(file.originalname)}`),
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: '/tmp/uploads',
+        filename: (_req, file, cb) =>
+          cb(null, `padron_${Date.now()}${extname(file.originalname)}`),
+      }),
     }),
-  }))
+  )
   async cargar(
     @Param('convocatoriaId') convocatoriaId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -35,7 +51,10 @@ export class PadronController {
       originalname: file.originalname,
     });
 
-    return { jobId: job.id, mensaje: 'Padrón en proceso. Verificá el estado con el jobId.' };
+    return {
+      jobId: job.id,
+      mensaje: 'Padrón en proceso. Verificá el estado con el jobId.',
+    };
   }
 
   @Get('status/:jobId')

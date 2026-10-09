@@ -48,7 +48,10 @@ export class CreateRankingConfigDto {
   @IsOptional()
   minRegularizadas?: number;
 
-  @ApiPropertyOptional({ default: 'PROMEDIO', description: 'PROMEDIO | APROBADAS | ANTIGUEDAD' })
+  @ApiPropertyOptional({
+    default: 'PROMEDIO',
+    description: 'PROMEDIO | APROBADAS | ANTIGUEDAD',
+  })
   @IsOptional()
   @IsString()
   criterioDesempate?: string;

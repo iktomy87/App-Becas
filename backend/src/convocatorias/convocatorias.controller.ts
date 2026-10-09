@@ -1,7 +1,11 @@
 import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConvocatoriasService } from './convocatorias.service';
-import { CreateConvocatoriaDto, UpdateConvocatoriaDto, CreateRankingConfigDto } from './dto/convocatoria.dto';
+import {
+  CreateConvocatoriaDto,
+  UpdateConvocatoriaDto,
+  CreateRankingConfigDto,
+} from './dto/convocatoria.dto';
 
 @ApiTags('Convocatorias')
 @Controller('convocatorias')
@@ -33,14 +37,22 @@ export class ConvocatoriasController {
   }
 
   @Post(':id/cierre')
-  @ApiOperation({ summary: 'Cerrar la convocatoria (dispara el proceso de ranking y asignación vía Facade)' })
+  @ApiOperation({
+    summary:
+      'Cerrar la convocatoria (dispara el proceso de ranking y asignación vía Facade)',
+  })
   cerrar(@Param('id') id: string) {
     return this.service.cerrar(id);
   }
 
   @Put(':id/ranking-config')
-  @ApiOperation({ summary: 'Configurar parámetros del ranking para esta convocatoria' })
-  upsertRankingConfig(@Param('id') id: string, @Body() dto: CreateRankingConfigDto) {
+  @ApiOperation({
+    summary: 'Configurar parámetros del ranking para esta convocatoria',
+  })
+  upsertRankingConfig(
+    @Param('id') id: string,
+    @Body() dto: CreateRankingConfigDto,
+  ) {
     return this.service.upsertRankingConfig(id, dto);
   }
 }

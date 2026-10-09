@@ -149,3 +149,22 @@
   margin-bottom: 16px;
   background: #fff;
 }
+
+/* Paginación de tablas (RankingPage e InscripcionesPage) */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.paginacion span {
+  color: var(--text-gray);
+  font-size: 13px;
+}
+
+.paginacion .btn.outline:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

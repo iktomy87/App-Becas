@@ -1,1 +1,20 @@
 csv/*
+
+# Entornos (cubre backend/ y frontend/)
+.env
+.env.*
+!*.example
+!**/*.example
+
+# Claves y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+id_ed25519*
+
+# Secretos y volcados locales
+secrets/
+*.secret

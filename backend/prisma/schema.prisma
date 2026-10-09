@@ -48,13 +48,14 @@ enum EstadoAsignacion {
 // ─── Convocatoria ─────────────────────────────────────────────────────────────
 
 model Convocatoria {
-  id            String               @id @default(uuid())
-  nombre        String
-  fechaApertura DateTime             @map("fecha_apertura")
-  fechaCierre   DateTime             @map("fecha_cierre")
-  estado        EstadoConvocatoria   @default(ABIERTA)
-  createdAt     DateTime             @default(now()) @map("created_at")
-  updatedAt     DateTime             @updatedAt @map("updated_at")
+  id                String               @id @default(uuid())
+  nombre            String
+  fechaApertura     DateTime             @map("fecha_apertura")
+  fechaCierre       DateTime             @map("fecha_cierre")
+  estado            EstadoConvocatoria   @default(ABIERTA)
+  antecedentesPath  String?              @map("antecedentes_path") // path al último archivo de antecedentes importado
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
 
   rankingConfig    RankingConfig?
   propuestas       Propuesta[]

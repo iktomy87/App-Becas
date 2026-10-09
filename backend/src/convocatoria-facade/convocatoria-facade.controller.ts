@@ -8,7 +8,10 @@ export class ConvocatoriaFacadeController {
   constructor(private readonly facade: ConvocatoriaFacadeService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cierra la convocatoria, calcula el ranking y ejecuta la asignación en un único paso (§4.5 ERS)' })
+  @ApiOperation({
+    summary:
+      'Cierra la convocatoria, calcula el ranking y ejecuta la asignación en un único paso (§4.5 ERS)',
+  })
   cerrarYAsignar(@Param('id') id: string) {
     return this.facade.cerrarYAsignar(id);
   }

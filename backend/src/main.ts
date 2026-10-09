@@ -1,4 +1,4 @@
-import 'dotenv/config';   // ← debe ser el PRIMER import para que DATABASE_URL esté disponible antes de que NestJS instancie módulos
+import 'dotenv/config'; // ← debe ser el PRIMER import para que DATABASE_URL esté disponible antes de que NestJS instancie módulos
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -19,7 +19,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Plataforma de Becas — API')
-    .setDescription('Backend para gestión de convocatorias, postulaciones, ranking y asignación de becas.')
+    .setDescription(
+      'Backend para gestión de convocatorias, postulaciones, ranking y asignación de becas.',
+    )
     .setVersion('1.0')
     .build();
 

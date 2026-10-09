@@ -70,7 +70,7 @@ function uploadWithProgress<T>(
   formData: FormData,
   options?: { inactivityTimeoutMs?: number; onProgress?: (pct: number) => void },
 ): Promise<T> {
-  const inactivityTimeoutMs = options?.inactivityTimeoutMs ?? 120_000; // 120s sin avanzar = lo damos por colgado
+  const inactivityTimeoutMs = options?.inactivityTimeoutMs ?? 260_000; // 120s sin avanzar = lo damos por colgado
   const onProgress = options?.onProgress;
 
   return new Promise<T>((resolve, reject) => {
@@ -128,10 +128,10 @@ function uploadWithProgress<T>(
 }
 
 export const http = {
-  get:    <T>(path: string)                 => request<T>(path),
-  post:   <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST',  body: body ? JSON.stringify(body) : undefined }),
-  put:    <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT',   body: body ? JSON.stringify(body) : undefined }),
-  delete: <T>(path: string)                 => request<T>(path, { method: 'DELETE' }),
+  get: <T>(path: string) => request<T>(path),
+  post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 
   /**
    * Para uploads multipart de archivos grandes. Timeout de INACTIVIDAD
@@ -140,5 +140,5 @@ export const http = {
    * Pasá onProgress para mostrar % de subida en la UI.
    */
   upload: <T>(path: string, formData: FormData, onProgress?: (pct: number) => void) =>
-    uploadWithProgress<T>(path, formData, { inactivityTimeoutMs: 120_000, onProgress }),
+    uploadWithProgress<T>(path, formData, { inactivityTimeoutMs: 200_000, onProgress }),
 };

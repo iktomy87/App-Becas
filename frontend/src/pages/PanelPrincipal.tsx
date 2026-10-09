@@ -5,7 +5,7 @@ import { usePanelPrincipal }             from '../hooks/usePanelPrincipal';
 import { RankingTable, type RankingRow } from '../components/RankingTable';
 import { StatCard }                      from '../components/StatCard';
 import { DropzoneOverlay }               from '../components/DropzoneOverlay';
-import type { ResultadoRanking }         from '../services/types';
+import type { ResultadoRanking, ReporteFila } from '../services/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -15,10 +15,12 @@ function toRankingRow(r: ResultadoRanking): RankingRow {
     nombre:   r.padron.nombreCompleto,
     dni:      r.padron.dni,
     legajo:   r.padron.legajo,
-    carrera:  r.padron.especialidadCodigo?.toString() ?? '—',
+    // El backend ya resuelve el nombre de la carrera; antes se mostraba el
+    // código numérico crudo porque el select no lo traía.
+    carrera:  r.padron.especialidad ?? `Esp. ${r.padron.especialidadCodigo ?? '—'}`,
     promedio: Number(r.padron.promedio).toFixed(2).replace('.', ','),
     factor:   Number(r.puntajeTotal).toFixed(2).replace('.', ','),
-    prioridades: (r.postulaciones ?? []).map((p) => ({
+    prioridades: r.postulaciones.map((p) => ({
       orden:       p.ordenPreferencia,
       propuestaId: p.propuestaId,
     })),
@@ -44,6 +46,28 @@ function handleVerFicha(row: RankingRow) {
   console.warn('Ver ficha — pendiente de implementación', row.nombre);
 }
 
+// ── Resumen de errores de la carga (RF-07) ───────────────────────────────────
+
+/**
+ * Agrupa el reporte fila por fila por causa, para no volcar cientos de
+ * mensajes en la notificación.
+ */
+function resumirErrores(errores: ReporteFila[]): string {
+  if (errores.length === 0) return '';
+  const counts: Record<string, number> = {};
+  for (const e of errores) {
+    const key =
+      e.campo === 'dni' ? 'DNI no encontrado en el padrón'
+      : e.campo === 'preferencias' && e.mensaje.includes('no tiene preferencias') ? 'Sin preferencias declaradas'
+      : e.campo === 'preferencias' && e.mensaje.includes('no existe') ? 'ID de propuesta no existe'
+      : e.mensaje || 'Error desconocido';
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return '\n\nDetalle:\n' + Object.entries(counts)
+    .map(([msg, n]) => `• ${msg}: ${n}`)
+    .join('\n');
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export function PanelPrincipal() {
@@ -67,50 +91,61 @@ export function PanelPrincipal() {
         const res = await cargarPadron(file);
         setNotification({
           title: 'Padrón cargado',
-          message: res?.mensaje || 'Se ha cargado el padrón correctamente.',
-          type: 'success',
+          message: `Se procesaron ${res.procesadas} filas del padrón` +
+            (res.errores > 0 ? `, con ${res.errores} errores.` : '.'),
+          type: res.errores > 0 ? 'warning' : 'success',
         });
       } else {
         const res = await cargarPlanilla(file);
-        console.log('[Planilla resultado]', res);
 
-        const buildErrorSummary = (errores: any[]) => {
-          if (!errores || errores.length === 0) return '';
-          const counts: Record<string, number> = {};
-          for (const e of errores) {
-            const key = e.campo === 'dni' ? 'DNI no encontrado en el padrón'
-              : e.campo === 'preferencias' && e.mensaje?.includes('no tiene preferencias') ? 'Sin preferencias declaradas'
-              : e.campo === 'preferencias' && e.mensaje?.includes('no existe') ? 'ID de propuesta no existe'
-              : e.mensaje || 'Error desconocido';
-            counts[key] = (counts[key] || 0) + 1;
-          }
-          return '\n\nDetalle:\n' + Object.entries(counts).map(([msg, n]) => `• ${msg}: ${n}`).join('\n');
-        };
-
-        if (res?.filasValidas > 0 && res?.filasError === 0) {
+        if (res.filasValidas > 0 && res.filasError === 0) {
           setNotification({
             title: 'Planilla procesada con éxito',
             message: `Se guardaron ${res.filasValidas} inscripciones correctamente.`,
             type: 'success',
           });
-        } else if (res?.filasValidas > 0 && res?.filasError > 0) {
+        } else if (res.filasValidas > 0) {
           setNotification({
-            title: 'Carga parcial (con advertencias)',
-            message: `Se guardaron ${res.filasValidas} inscripciones correctamente.\nSin embargo, ${res.filasError} filas fueron descartadas por errores.${buildErrorSummary((res as any).errores)}`,
+            title: 'Carga parcial (con errores)',
+            message: `Se guardaron ${res.filasValidas} inscripciones correctamente.\n` +
+              `Sin embargo, ${res.filasError} filas fueron descartadas por errores.` +
+              resumirErrores(res.errores),
             type: 'warning',
           });
         } else {
           setNotification({
             title: 'No se guardó ninguna inscripción',
-            message: `Todas las filas (${res?.filasError ?? 0}) fueron rechazadas. Revisá los errores antes de volver a intentar.${buildErrorSummary((res as any)?.errores)}`,
+            message: `Todas las filas (${res.filasError}) fueron rechazadas. ` +
+              `Revisá los errores antes de volver a intentar.` +
+              resumirErrores(res.errores),
             type: 'error',
           });
         }
+
+        // Las filas con estado de padrón distinto de "Activo" se importan y
+        // quedan registradas en `advertencias` (y persistidas en la carga), así
+        // que el operador las puede consultar aunque recargue la página.
+        const estadoPadrón = res.advertencias.filter((a) => a.campo === 'estado');
+        if (estadoPadrón.length > 0) {
+          const detalle = estadoPadrón
+            .slice(0, 3)
+            .map((a) => `• Fila ${a.fila}: ${a.mensaje}`)
+            .join('\n');
+          const resto = estadoPadrón.length - 3;
+          setNotification({
+            title: 'Planilla procesada',
+            message: `Se guardaron ${res.filasValidas} inscripciones correctamente.` +
+              `\n\n${estadoPadrón.length} de ellas tienen un estado de padrón distinto de ` +
+              `"Activo" y conviene que las revises:\n${detalle}` +
+              (resto > 0 ? `\n… y ${resto} más.` : ''),
+            type: 'warning',
+          });
+        }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setNotification({
         title: 'Error al procesar el archivo',
-        message: err.message || 'No se pudo completar la operación.',
+        message: err instanceof Error ? err.message : 'No se pudo completar la operación.',
         type: 'error',
       });
     } finally {

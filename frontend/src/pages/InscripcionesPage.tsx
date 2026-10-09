@@ -1,42 +1,85 @@
 import { useState, useEffect } from 'react';
 import { importacionService } from '../services/importacion.service';
 import { convocatoriasService } from '../services/convocatorias.service';
-import type { Convocatoria } from '../services/types';
+import { seleccionarConvocatoriaActiva } from '../hooks/convocatoriaActiva';
+import type { Convocatoria, Inscripcion } from '../services/types';
 import './InscripcionesPage.css';
 import './PanelPrincipal.css';
 
+// Filas por página: las filas de inscripciones incluyen la lista de
+// prioridades, así que son más altas que las del ranking.
+const PAGE_SIZE = 20;
+
 export function InscripcionesPage() {
-  const [inscripciones, setInscripciones] = useState<any[]>([]);
+  const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [convocatoria, setConvocatoria] = useState<Convocatoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Resolver la convocatoria activa con la misma regla que usan el panel y
+  // `/ranking` (antes esto era una tercera copia de la regla, que podía
+  // divergir de las otras pantallas).
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function resolver() {
       try {
-        setLoading(true);
-        const convocatorias = await convocatoriasService.listar();
-        const activa = convocatorias.find(
-          (c) => c.estado === 'ABIERTA' || c.estado === 'EN_RANKING',
-        ) ?? convocatorias[0] ?? null;
-
+        const conv = seleccionarConvocatoriaActiva(
+          await convocatoriasService.listar(),
+        );
         if (cancelled) return;
-        setConvocatoria(activa);
-
-        if (activa) {
-          const data = await importacionService.listarInscripciones(activa.id);
-          if (!cancelled) setInscripciones(data || []);
-        }
+        setConvocatoria(conv ?? null);
+        // Sin convocatoria no se dispara el fetch de datos que bajaría `loading`.
+        if (!conv) setLoading(false);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Error al cargar inscripciones');
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Error al cargar inscripciones',
+          );
+          setLoading(false);
+        }
+      }
+    }
+    void resolver();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Cargar la página actual de la convocatoria (pagina en el backend).
+  useEffect(() => {
+    if (!convocatoria) return;
+    const convId = convocatoria.id;
+    let cancelled = false;
+    async function cargar() {
+      setLoading(true);
+      try {
+        const res = await importacionService.listarInscripciones(
+          convId,
+          page,
+          PAGE_SIZE,
+        );
+        if (cancelled) return;
+        setInscripciones(res.data);
+        setTotal(res.total);
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Error al cargar inscripciones',
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    void load();
+    void cargar();
     return () => { cancelled = true; };
-  }, []);
+  }, [convocatoria, page]);
+
+  const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
 
   if (loading) {
@@ -116,7 +159,7 @@ export function InscripcionesPage() {
       <div className="divider-orange" />
 
       <p className="updated" style={{ color: 'var(--text-gray)', fontSize: '13px', margin: '0 0 20px 0' }}>
-        Total de inscripciones cargadas: {inscripciones.length}
+        Total de inscripciones cargadas: {total}
       </p>
 
       {/* Barra de filtros */}
@@ -142,7 +185,7 @@ export function InscripcionesPage() {
               <th>Estudiante</th>
               <th>Carrera</th>
               <th>Promedio</th>
-              <th>Cursadas</th>
+              <th title="Materias cursando en el año académico actual">Curs. año</th>
               <th>Aprobadas</th>
               <th>Aplazos</th>
               <th>Prioridades</th>
@@ -161,14 +204,21 @@ export function InscripcionesPage() {
                     <p className="student-name">{insc.nombreCompleto}</p>
                     <p className="student-meta">DNI {insc.dni} - Leg. {insc.legajo}</p>
                   </td>
-                  <td>{insc.especialidadCodigo ?? '—'}</td>
+                  <td title={`Cód. ${insc.especialidadCodigo ?? '—'}`}>
+                    {/* El nombre lo resuelve el backend desde el catálogo de
+                        especialidades; acá ya no hay diccionario propio. */}
+                    {insc.especialidad
+                      ?? (insc.especialidadCodigo != null
+                        ? `Esp. ${insc.especialidadCodigo}`
+                        : '—')}
+                  </td>
                   <td>{insc.promedio != null ? Number(insc.promedio).toFixed(2).replace('.', ',') : '—'}</td>
                   <td>{insc.cursando ?? '—'}</td>
                   <td>{insc.aprobadas ?? '—'}</td>
                   <td>{insc.aplazos ?? '—'}</td>
                   <td>
                     <div className="priorities">
-                      {(insc.postulaciones || []).map((p: any) => (
+                      {(insc.postulaciones || []).map((p) => (
                         <div key={p.id}>
                           {p.ordenPreferencia}° - {p.propuesta?.idExterno || p.propuestaId}
                         </div>
@@ -183,6 +233,27 @@ export function InscripcionesPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="paginacion">
+        <button
+          className="btn outline"
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+        >
+          ← Anterior
+        </button>
+        <span>
+          Página {page} de {totalPaginas} · {total}{' '}
+          {total === 1 ? 'inscripción' : 'inscripciones'}
+        </span>
+        <button
+          className="btn outline"
+          disabled={page >= totalPaginas}
+          onClick={() => setPage(page + 1)}
+        >
+          Siguiente →
+        </button>
       </div>
     </main>
   );
