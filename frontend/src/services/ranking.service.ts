@@ -13,11 +13,24 @@ export const rankingService = {
     return http.upload<{ filasTotal: number; filasValidas: number; filasError: number; errores: any[] }>(`/convocatorias/${convocatoriaId}/ranking/importar`, form);
   },
 
-  /** GET /convocatorias/:convocatoriaId/ranking?page=&limit= */
-  listar: (convocatoriaId: string, page = 1, limit = 50) =>
-    http.get<RankingPage>(
-      `/convocatorias/${convocatoriaId}/ranking?page=${page}&limit=${limit}`,
-    ),
+  /** GET /convocatorias/:convocatoriaId/ranking?page=&limit=&q=&carrera= */
+  listar: (
+    convocatoriaId: string,
+    page = 1,
+    limit = 50,
+    q?: string,
+    carrera?: string,
+  ) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (q) params.set('q', q);
+    if (carrera) params.set('carrera', carrera);
+    return http.get<RankingPage>(
+      `/convocatorias/${convocatoriaId}/ranking?${params}`,
+    );
+  },
 
   /** GET /convocatorias/:convocatoriaId/ranking/estudiante/:dni */
   getDesglose: (convocatoriaId: string, dni: string) =>

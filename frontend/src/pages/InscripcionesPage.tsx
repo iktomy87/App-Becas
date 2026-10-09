@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { importacionService } from '../services/importacion.service';
 import { convocatoriasService } from '../services/convocatorias.service';
+import { especialidadesService } from '../services/especialidades.service';
 import { seleccionarConvocatoriaActiva } from '../hooks/convocatoriaActiva';
-import type { Convocatoria, Inscripcion } from '../services/types';
+import type { Convocatoria, Especialidad, Inscripcion } from '../services/types';
 import './InscripcionesPage.css';
 import './PanelPrincipal.css';
 
@@ -14,6 +15,10 @@ export function InscripcionesPage() {
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [q, setQ] = useState('');
+  const [qAplicada, setQAplicada] = useState('');
+  const [carrera, setCarrera] = useState('');
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
   const [convocatoria, setConvocatoria] = useState<Convocatoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +52,29 @@ export function InscripcionesPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Opciones del dropdown de carrera, desde el catálogo del backend. Si el GET
+  // falla el dropdown queda solo con "Todas las carreras" (no tumba la página).
+  useEffect(() => {
+    let cancelled = false;
+    async function cargarEspecialidades() {
+      try {
+        const es = await especialidadesService.listar();
+        if (!cancelled) setEspecialidades(es);
+      } catch {
+        // sin opciones de carrera
+      }
+    }
+    void cargarEspecialidades();
+    return () => { cancelled = true; };
+  }, []);
+
+  // La búsqueda se aplica recién con Enter (no en cada tecla). Al aplicarla se
+  // vuelve a la primera página porque es un conjunto nuevo.
+  const aplicarBusqueda = () => {
+    setQAplicada(q.trim());
+    setPage(1);
+  };
+
   // Cargar la página actual de la convocatoria (pagina en el backend).
   useEffect(() => {
     if (!convocatoria) return;
@@ -59,6 +87,8 @@ export function InscripcionesPage() {
           convId,
           page,
           PAGE_SIZE,
+          qAplicada,
+          carrera,
         );
         if (cancelled) return;
         setInscripciones(res.data);
@@ -77,7 +107,7 @@ export function InscripcionesPage() {
     }
     void cargar();
     return () => { cancelled = true; };
-  }, [convocatoria, page]);
+  }, [convocatoria, page, qAplicada, carrera]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -164,12 +194,33 @@ export function InscripcionesPage() {
 
       {/* Barra de filtros */}
       <div className="filters">
-        <input type="text" placeholder="Buscar por nombre, legajo o DNI" />
+        <input
+          type="text"
+          placeholder="Buscar por nombre, legajo o DNI (Enter)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') aplicarBusqueda();
+          }}
+        />
         <select className="select-like">
           <option>Todos los tipos</option>
         </select>
-        <select className="select-like">
-          <option>Todas las carreras</option>
+        <select
+          className="select-like"
+          value={carrera}
+          onChange={(e) => {
+            setCarrera(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Filtrar por carrera"
+        >
+          <option value="">Todas las carreras</option>
+          {especialidades.map((es) => (
+            <option key={es.codigo} value={String(es.codigo)}>
+              {es.nombre} (Esp. {es.codigo})
+            </option>
+          ))}
         </select>
         <div className="spacer"></div>
         <select className="select-like columns-select">
@@ -195,7 +246,13 @@ export function InscripcionesPage() {
           <tbody>
             {inscripciones.length === 0 ? (
               <tr>
-                <td colSpan={8} className="empty-message">No hay inscripciones para mostrar.</td>
+                <td colSpan={8} className="empty-message">
+                  {qAplicada
+                    ? `Sin resultados para «${qAplicada}»`
+                    : carrera
+                      ? 'Sin resultados para la carrera seleccionada.'
+                      : 'No hay inscripciones para mostrar.'}
+                </td>
               </tr>
             ) : (
               inscripciones.map((insc) => (

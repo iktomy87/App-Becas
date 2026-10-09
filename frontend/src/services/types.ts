@@ -27,6 +27,14 @@ export interface CreateConvocatoriaDto {
 
 export interface UpdateConvocatoriaDto extends Partial<CreateConvocatoriaDto> {}
 
+// ─── Especialidad (catálogo del backend GET /especialidades) ─────────────────
+
+export interface Especialidad {
+  codigo: number;
+  nombre: string;
+  materiasDelPlan: number;
+}
+
 // ─── Propuesta ────────────────────────────────────────────────────────────────
 
 export interface Propuesta {

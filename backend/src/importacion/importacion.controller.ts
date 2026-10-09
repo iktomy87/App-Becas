@@ -94,11 +94,15 @@ export class ImportacionController {
     @Param('convocatoriaId') convocatoriaId: string,
     @Query('page') page = 1,
     @Query('limit') limit = 50,
+    @Query('q') q?: string,
+    @Query('carrera') carrera?: string,
   ) {
     return this.importacionService.getInscripciones(
       convocatoriaId,
       +page,
       +limit,
+      q,
+      carrera,
     );
   }
 

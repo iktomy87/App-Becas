@@ -13,6 +13,7 @@ import {
 } from '../padron/resolver-datos';
 import { persistirAplazosDePlanilla } from '../padron/persistir-aplazos';
 import { leerNumero, leerEntero, leerDni } from '../common/numero';
+import { whereBusquedaEstudiante } from '../common/busqueda';
 import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 
@@ -174,10 +175,32 @@ export class RankingService {
     return { calculados, inhabilitados };
   }
 
-  async getRanking(convocatoriaId: string, page = 1, limit = 50) {
+  async getRanking(
+    convocatoriaId: string,
+    page = 1,
+    limit = 50,
+    q?: string,
+    carrera?: string,
+  ) {
+    const orBusqueda = whereBusquedaEstudiante(q);
+    const codigoCarrera =
+      carrera && Number.isInteger(+carrera) ? +carrera : undefined;
+    // Filtros sobre el padrón: búsqueda (nombre/DNI/legajo) + carrera, que se
+    // combinan con AND dentro de la relación `padron`. Sin filtros, el where
+    // queda igual que antes (`{ convocatoriaId }`).
+    const filtrosPadron = {
+      ...(orBusqueda ? { OR: orBusqueda } : {}),
+      ...(codigoCarrera != null ? { especialidadCodigo: codigoCarrera } : {}),
+    };
+    const where = {
+      convocatoriaId,
+      ...(Object.keys(filtrosPadron).length > 0
+        ? { padron: filtrosPadron }
+        : {}),
+    };
     const [data, total] = await Promise.all([
       this.prisma.resultadoRanking.findMany({
-        where: { convocatoriaId },
+        where,
         orderBy: [{ posicion: 'asc' }, { puntajeTotal: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -198,7 +221,7 @@ export class RankingService {
           },
         },
       }),
-      this.prisma.resultadoRanking.count({ where: { convocatoriaId } }),
+      this.prisma.resultadoRanking.count({ where }),
     ]);
 
     // La columna "Prioridades" del panel principal se armaba con `postulaciones`

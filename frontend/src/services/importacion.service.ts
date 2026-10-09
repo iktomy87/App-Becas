@@ -51,9 +51,22 @@ export const importacionService = {
       `/convocatorias/${convocatoriaId}/planillas/${cargaId}`,
     ),
 
-  /** GET /convocatorias/:convocatoriaId/planillas/inscripciones (paginado) */
-  listarInscripciones: (convocatoriaId: string, page = 1, limit = 50) =>
-    http.get<InscripcionesPage>(
-      `/convocatorias/${convocatoriaId}/planillas/inscripciones?page=${page}&limit=${limit}`,
-    ),
+  /** GET /convocatorias/:convocatoriaId/planillas/inscripciones (paginado + filtros) */
+  listarInscripciones: (
+    convocatoriaId: string,
+    page = 1,
+    limit = 50,
+    q?: string,
+    carrera?: string,
+  ) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (q) params.set('q', q);
+    if (carrera) params.set('carrera', carrera);
+    return http.get<InscripcionesPage>(
+      `/convocatorias/${convocatoriaId}/planillas/inscripciones?${params}`,
+    );
+  },
 };

@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { rankingService } from '../services/ranking.service';
 import { convocatoriasService } from '../services/convocatorias.service';
+import { especialidadesService } from '../services/especialidades.service';
 import { seleccionarConvocatoriaActiva } from '../hooks/convocatoriaActiva';
-import type { Convocatoria, ResultadoRanking } from '../services/types';
+import type { Convocatoria, Especialidad, ResultadoRanking } from '../services/types';
 
 export function RankingPage() {
   const { convocatoriaId: paramId } = useParams();
@@ -15,6 +16,10 @@ export function RankingPage() {
   const [resultados, setResultados] = useState<ResultadoRanking[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [q, setQ] = useState('');
+  const [qAplicada, setQAplicada] = useState('');
+  const [carrera, setCarrera] = useState('');
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const convocatoriaId = convocatoria?.id;
@@ -54,11 +59,41 @@ export function RankingPage() {
   const PAGE_SIZE = 50;
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // Opciones del dropdown de carrera, desde el catálogo del backend. Si el GET
+  // falla el dropdown queda solo con "Todas las carreras" (no tumba la página).
+  useEffect(() => {
+    let cancelled = false;
+    async function cargarEspecialidades() {
+      try {
+        const es = await especialidadesService.listar();
+        if (!cancelled) setEspecialidades(es);
+      } catch {
+        // sin opciones de carrera
+      }
+    }
+    void cargarEspecialidades();
+    return () => { cancelled = true; };
+  }, []);
+
+  // La búsqueda se aplica recién con Enter (no en cada tecla): el fetch sigue
+  // usando la última búsqueda aplicada hasta que el usuario la confirme. Al
+  // aplicarla se vuelve a la primera página porque es un conjunto nuevo.
+  const aplicarBusqueda = () => {
+    setQAplicada(q.trim());
+    setPage(1);
+  };
+
   const fetchRanking = async () => {
     if (!convocatoriaId) return;
     setLoading(true);
     try {
-      const res = await rankingService.listar(convocatoriaId, page, PAGE_SIZE);
+      const res = await rankingService.listar(
+        convocatoriaId,
+        page,
+        PAGE_SIZE,
+        qAplicada,
+        carrera,
+      );
       setResultados(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -70,7 +105,7 @@ export function RankingPage() {
 
   useEffect(() => {
     void fetchRanking();
-  }, [convocatoriaId, page]);
+  }, [convocatoriaId, page, qAplicada, carrera]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,15 +208,35 @@ export function RankingPage() {
       </p>
 
       <div className="filters">
-        <input type="text" placeholder="Buscar por nombre, legajo o DNI" />
+        <input
+          type="text"
+          placeholder="Buscar por nombre, legajo o DNI (Enter)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') aplicarBusqueda();
+          }}
+        />
         <div className="select-like">
           Todos los tipos
           <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
         </div>
-        <div className="select-like">
-          Todas las carreras
-          <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
-        </div>
+        <select
+          className="select-like"
+          value={carrera}
+          onChange={(e) => {
+            setCarrera(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Filtrar por carrera"
+        >
+          <option value="">Todas las carreras</option>
+          {especialidades.map((es) => (
+            <option key={es.codigo} value={String(es.codigo)}>
+              {es.nombre} (Esp. {es.codigo})
+            </option>
+          ))}
+        </select>
         <div className="spacer"></div>
         <div className="select-like columns-select">
           Columnas
@@ -207,7 +262,13 @@ export function RankingPage() {
           <tbody>
             {resultados.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>No hay resultados de ranking cargados. Usa "Cargar orden de mérito".</td>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>
+                  {qAplicada
+                    ? `Sin resultados para «${qAplicada}»`
+                    : carrera
+                      ? 'Sin resultados para la carrera seleccionada.'
+                      : 'No hay resultados de ranking cargados. Usa "Cargar orden de mérito".'}
+                </td>
               </tr>
             ) : (
               resultados.map((r) => (

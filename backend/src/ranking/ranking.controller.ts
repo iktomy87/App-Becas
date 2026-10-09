@@ -49,12 +49,22 @@ export class RankingController {
   @ApiOperation({ summary: 'Obtener ranking paginado (RF-13)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'q', required: false, type: String })
+  @ApiQuery({ name: 'carrera', required: false, type: Number })
   getRanking(
     @Param('convocatoriaId') convocatoriaId: string,
     @Query('page') page = 1,
     @Query('limit') limit = 50,
+    @Query('q') q?: string,
+    @Query('carrera') carrera?: string,
   ) {
-    return this.service.getRanking(convocatoriaId, +page, +limit);
+    return this.service.getRanking(
+      convocatoriaId,
+      +page,
+      +limit,
+      q,
+      carrera,
+    );
   }
 
   @Get('estudiante/:dni')

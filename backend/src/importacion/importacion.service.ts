@@ -13,6 +13,7 @@ import {
   ErrorFila,
 } from './planilla-verifier';
 import { leerNumero, leerEntero, leerDni } from '../common/numero';
+import { whereBusquedaEstudiante } from '../common/busqueda';
 import { nombreEspecialidad } from '../especialidades/especialidades';
 import { ArchivoPlanilla } from './archivo-planilla.interface';
 
@@ -603,13 +604,25 @@ export class ImportacionService {
     });
   }
 
-  async getInscripciones(convocatoriaId: string, page = 1, limit = 50) {
+  async getInscripciones(
+    convocatoriaId: string,
+    page = 1,
+    limit = 50,
+    q?: string,
+    carrera?: string,
+  ) {
     // Misma forma de paginación que `getRanking`: `{data, total, page, limit}`.
     // Antes devolvía la lista completa; con 188+ filas por convocatoria seguía
     // alcanzando, pero no escala ni permite que la pantalla no cargue todo.
+    const orBusqueda = whereBusquedaEstudiante(q);
+    const codigoCarrera =
+      carrera && Number.isInteger(+carrera) ? +carrera : undefined;
     const where = {
       convocatoriaId,
       postulaciones: { some: { convocatoriaId } },
+      // Barra de búsqueda: nombre, DNI o legajo (AND con la carrera).
+      ...(orBusqueda ? { OR: orBusqueda } : {}),
+      ...(codigoCarrera != null ? { especialidadCodigo: codigoCarrera } : {}),
     };
     const [data, total] = await Promise.all([
       this.prisma.padronAcademico.findMany({
