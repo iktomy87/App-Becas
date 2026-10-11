@@ -25,7 +25,10 @@ export interface CreateConvocatoriaDto {
   fechaCierre:   string;
 }
 
-export interface UpdateConvocatoriaDto extends Partial<CreateConvocatoriaDto> {}
+// Una interfaz vacía que sólo extiende (`extends Partial<...> {}`) dispara
+// no-empty-object-type; un alias de tipo es exactamente equivalente y no deja
+// miembros vacíos.
+export type UpdateConvocatoriaDto = Partial<CreateConvocatoriaDto>;
 
 // ─── Especialidad (catálogo del backend GET /especialidades) ─────────────────
 
@@ -52,6 +55,13 @@ export interface Propuesta {
   horario?:            string;
   estado:              EstadoPropuesta;
   convocatoriaId:      string;
+}
+
+export interface PropuestasPage {
+  data:  Propuesta[];
+  total: number;
+  page:  number;
+  limit: number;
 }
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────

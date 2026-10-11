@@ -25,8 +25,16 @@ export class PropuestasController {
   @Get()
   @ApiOperation({ summary: 'Listar propuestas (filtrar por convocatoria)' })
   @ApiQuery({ name: 'convocatoriaId', required: false })
-  findAll(@Query('convocatoriaId') convocatoriaId?: string) {
-    return this.service.findAll(convocatoriaId);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'q', required: false, type: String })
+  findAll(
+    @Query('convocatoriaId') convocatoriaId?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+    @Query('q') q?: string,
+  ) {
+    return this.service.findAll(convocatoriaId, +page, +limit, q);
   }
 
   @Get(':id')

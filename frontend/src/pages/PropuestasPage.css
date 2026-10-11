@@ -1,0 +1,120 @@
+/* La página replica la apariencia de InscripcionesPage, pero con estilos
+   propios para poder divergir sin tocar la otra pantalla. Los estilos
+   compartidos (.page-head, .page-title, .conv-row, .badge, .divider-orange,
+   .sk-*, .paginacion, .btn) vienen de PanelPrincipal.css. */
+
+.propuestas-page .loading-text {
+  color: var(--text-muted);
+}
+.propuestas-page .error-text {
+  color: #e2574c;
+}
+
+/* Filters */
+.propuestas-page .filters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.propuestas-page .filters input[type="text"] {
+  flex: 1;
+  max-width: 340px;
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 13px;
+  color: var(--text-dark);
+  background: #fff;
+}
+.propuestas-page .filters input::placeholder {
+  color: #b0b4ba;
+}
+.propuestas-page .filters .spacer {
+  flex: 1;
+}
+
+/* Table */
+.propuestas-page .table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.propuestas-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.propuestas-page thead th {
+  text-align: left;
+  background: #fafafa;
+  color: var(--text-gray);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6; /* subtle vertical border */
+  white-space: nowrap;
+}
+.propuestas-page thead th:last-child {
+  border-right: none;
+}
+.propuestas-page tbody td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6; /* subtle vertical border */
+  vertical-align: middle;
+  color: var(--text-dark);
+}
+.propuestas-page tbody td:last-child {
+  border-right: none;
+}
+.propuestas-page tbody tr:last-child td {
+  border-bottom: none;
+}
+.propuestas-page .empty-message {
+  text-align: center;
+  color: var(--text-gray);
+  padding: 32px;
+}
+
+.propuestas-page .student-name {
+  font-weight: 700;
+  margin: 0 0 2px 0;
+}
+.propuestas-page .student-meta {
+  color: var(--text-gray);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Estado */
+.propuestas-page .estado-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.propuestas-page .estado-badge.publicada {
+  background: #dcfce7;
+  color: #15803d;
+}
+.propuestas-page .estado-badge.borrador {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+@media (max-width: 900px) {
+  .propuestas-page {
+    padding: 16px;
+  }
+  .propuestas-page .table-wrap {
+    overflow-x: auto;
+  }
+  .propuestas-page table {
+    min-width: 900px;
+  }
+}

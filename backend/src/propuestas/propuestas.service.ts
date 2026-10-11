@@ -4,6 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '@prisma/client';
 import { EstadoConvocatoria, EstadoPropuesta } from '@prisma/client';
 import { CreatePropuestaDto, UpdateVacantesDto } from './dto/propuesta.dto';
 
@@ -11,11 +12,38 @@ import { CreatePropuestaDto, UpdateVacantesDto } from './dto/propuesta.dto';
 export class PropuestasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(convocatoriaId?: string) {
-    return this.prisma.propuesta.findMany({
-      where: { ...(convocatoriaId && { convocatoriaId }) },
-      orderBy: { titulo: 'asc' },
-    });
+  async findAll(convocatoriaId?: string, page = 1, limit = 50, q?: string) {
+    const termino = q?.trim();
+    const where: Prisma.PropuestaWhereInput = {
+      ...(convocatoriaId && { convocatoriaId }),
+      // Búsqueda por código, título o responsable (misma semántica `contains`
+      // case-insensitive que las demás pantallas). Sin `q`, el where queda
+      // como antes: solo `convocatoriaId`.
+      ...(termino
+        ? {
+            OR: [
+              { idExterno: { contains: termino, mode: 'insensitive' } },
+              { titulo: { contains: termino, mode: 'insensitive' } },
+              {
+                responsableNombre: {
+                  contains: termino,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.propuesta.findMany({
+        where,
+        orderBy: { titulo: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.propuesta.count({ where }),
+    ]);
+    return { data, total, page, limit };
   }
 
   async findOne(id: string) {
