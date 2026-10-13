@@ -1,0 +1,205 @@
+/* La página replica la apariencia de PropuestasPage. Los estilos compartidos
+   (.content, .page-head, .page-title, .conv-row, .badge, .divider-orange,
+   .sk-*, .paginacion, .btn) vienen de PanelPrincipal.css; acá viven sólo los
+   propios de esta pantalla, incluida la sección "No asignados". */
+
+.asignaciones-page .error-text {
+  color: #e2574c;
+}
+
+/* ─── Resumen de la corrida ──────────────────────────────────────────────── */
+.asig-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.asig-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 148px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.asig-stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1.1;
+}
+
+.asig-stat-num.ok {
+  color: #15803d;
+}
+
+.asig-stat-num.warn {
+  color: #b45309;
+}
+
+.asig-stat-label {
+  font-size: 12.5px;
+  color: var(--text-gray);
+}
+
+/* ─── Acciones ───────────────────────────────────────────────────────────── */
+.asig-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.asig-actions .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.asig-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--text-gray);
+  background: #fff;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+}
+
+/* ─── Secciones ──────────────────────────────────────────────────────────── */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0 0 4px 0;
+}
+
+.section-count {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.section-count.warn {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.section-hint {
+  color: var(--text-gray);
+  font-size: 12.5px;
+  margin: 0 0 14px 0;
+}
+
+/* La sección "No asignados" arranca separada de la tabla de asignados. */
+.asignaciones-page .section-title + .table-wrap {
+  margin-top: 14px;
+}
+
+/* ─── Tabla ──────────────────────────────────────────────────────────────── */
+.asignaciones-page .table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.asignaciones-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.asignaciones-page thead th {
+  text-align: left;
+  background: #fafafa;
+  color: var(--text-gray);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+
+.asignaciones-page thead th:last-child {
+  border-right: none;
+}
+
+.asignaciones-page tbody td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6;
+  vertical-align: middle;
+  color: var(--text-dark);
+}
+
+.asignaciones-page tbody td:last-child {
+  border-right: none;
+}
+
+.asignaciones-page tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.asignaciones-page .empty-message {
+  text-align: center;
+  color: var(--text-gray);
+  padding: 32px;
+}
+
+.asignaciones-page .student-name {
+  font-weight: 700;
+  margin: 0 0 2px 0;
+}
+
+.asignaciones-page .student-meta {
+  color: var(--text-gray);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Botón para retirar a un asignado de su área (columna Acciones). */
+.asignaciones-page .btn-quitar {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #e2574c;
+  color: #e2574c;
+  background: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.asignaciones-page .btn-quitar:hover:not(:disabled) {
+  background: #e2574c;
+  color: #fff;
+}
+
+.asignaciones-page .btn-quitar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .asignaciones-page {
+    padding: 16px;
+  }
+  .asignaciones-page .table-wrap {
+    overflow-x: auto;
+  }
+  .asignaciones-page table {
+    min-width: 720px;
+  }
+}

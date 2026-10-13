@@ -261,15 +261,28 @@ export interface ResultadoAsignacion {
     legajo:         string;
   };
   propuesta?: {
-    titulo: string;
-    tipo:   TipoPropuesta;
+    idExterno?:   string;
+    titulo:       string;
+    tipo:         TipoPropuesta;
+    dependencia?: string | null;
   };
 }
 
+/** Resumen de la corrida de asignación vigente (previo a los resultados). */
+export interface AsignacionResumen {
+  id:                string;
+  estado:            EstadoCorrida;
+  totalPostulantes:  number;
+  totalAsignados:    number;
+  totalNoAsignados:  number;
+  vigente:           boolean;
+}
+
 export interface AsignacionPage {
-  data:  ResultadoAsignacion[];
-  total: number;
-  page:  number;
-  limit: number;
+  resumen: AsignacionResumen;
+  data:    ResultadoAsignacion[];
+  total:   number;
+  page:    number;
+  limit:   number;
 }
 

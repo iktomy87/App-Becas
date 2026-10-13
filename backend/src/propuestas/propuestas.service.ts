@@ -105,41 +105,70 @@ export class PropuestasService {
 
   // Carga masiva desde XLS de solicitudes
   async importarDesdeXls(rows: any[], convocatoriaId: string) {
-    const created: any[] = [];
+    // El archivo de solicitudes es la fuente de verdad del área: la convocatoria
+    // puede tener propuestas auto-creadas desde las preferencias de la planilla
+    // (responsable "Por definir") que hoy bloquearían la importación con el
+    // `skip` original. Ahora se hace un upsert: las existentes se actualizan
+    // (incluida la cantidad de becarios, antes de correr la corrida de
+    // asignación) y las nuevas se crean.
+    let importadas = 0;
     for (const row of rows) {
-      const existing = await this.prisma.propuesta.findUnique({
-        where: { idExterno: String(row.numero) },
-      });
-      if (existing) continue;
-
+      const idExterno = String(row.numero);
       const tipo = row.tipo === 'I' ? 'INVESTIGACION' : 'SERVICIO';
-      const prop = await this.prisma.propuesta.create({
-        data: {
-          idExterno: String(row.numero),
-          titulo:
-            row.proyecto || row.area_servicio || row.area_investigacion || '',
-          tipo,
-          responsableNombre: row.responsable_ayn ?? '',
-          responsableEmail: row.responsable_email ?? '',
-          vacantesTotal: Number(row.cantidad_becarios) || 1,
-          vacantesDisponibles: Number(row.cantidad_becarios) || 1,
-          modulos: Number(row.cantidad_modulos) || 1,
-          dependencia: row['dependencia__nombre'] ?? null,
-          especialidades: row.especialidad ?? null,
-          periodo: row.periodo ?? null,
-          horario: row.horario ?? null,
-          objetivo: row.objetivo ?? null,
-          tareas: row.tareas ?? null,
-          observaciones: row.observaciones ?? null,
-          reqRegularizadas: row.regularizadas ?? null,
-          reqAprobadas: row.aprobadas ?? null,
-          reqOtros: row.otros ?? null,
-          estado: EstadoPropuesta.PUBLICADA,
-          convocatoriaId,
-        },
+      // El export .xls de las solicitudes llena con la cadena literal "NaN" las
+      // celdas que no aplican (p. ej. `area_investigacion` en las de Servicio);
+      // se normaliza a vacío para no guardar "NaN" como nombre de área.
+      const limpiar = (v: unknown): string => {
+        const s = String(v ?? '').trim();
+        return !s || s.toLowerCase() === 'nan' ? '' : s;
+      };
+      const area =
+        limpiar(row.area_servicio) ||
+        limpiar(row.area_investigacion) ||
+        limpiar(row['dependencia__nombre']);
+      const base: Prisma.PropuestaUncheckedUpdateInput = {
+        // En Investigación el título es el PROYECTO; en Servicio no hay proyecto
+        // y el nombre que se muestra es el ÁREA.
+        titulo: limpiar(row.proyecto) || area || '',
+        tipo,
+        responsableNombre: limpiar(row.responsable_ayn) || '',
+        responsableEmail: limpiar(row.responsable_email) || '',
+        vacantesTotal: Number(row.cantidad_becarios) || 1,
+        vacantesDisponibles: Number(row.cantidad_becarios) || 1,
+        modulos: Number(row.cantidad_modulos) || 1,
+        // `dependencia` guarda el ÁREA (columna `area_servicio`/`area_investigacion`),
+        // separada del `titulo` que en investigación es el PROYECTO. El reporte de
+        // asignación los muestra en columnas distintas ("Nombre Área"/"Nombre Proyecto").
+        dependencia: area || null,
+        especialidades: limpiar(row.especialidad) || null,
+        periodo: limpiar(row.periodo) || null,
+        horario: limpiar(row.horario) || null,
+        objetivo: limpiar(row.objetivo) || null,
+        tareas: limpiar(row.tareas) || null,
+        observaciones: limpiar(row.observaciones) || null,
+        // El archivo de solicitudes escribe el requisito con el typo `ragularizadas`.
+        reqRegularizadas:
+          limpiar(row.ragularizadas) || limpiar(row.regularizadas) || null,
+        reqAprobadas: limpiar(row.aprobadas) || null,
+        reqOtros: limpiar(row.otros) || null,
+        estado: EstadoPropuesta.PUBLICADA,
+        convocatoriaId,
+      };
+      const existing = await this.prisma.propuesta.findUnique({
+        where: { idExterno },
       });
-      created.push(prop);
+      if (existing) {
+        await this.prisma.propuesta.update({
+          where: { id: existing.id },
+          data: base,
+        });
+      } else {
+        await this.prisma.propuesta.create({
+          data: { idExterno, ...base } as Prisma.PropuestaUncheckedCreateInput,
+        });
+      }
+      importadas++;
     }
-    return { importadas: created.length };
+    return { importadas };
   }
 }

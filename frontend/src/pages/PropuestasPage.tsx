@@ -112,7 +112,7 @@ export function PropuestasPage() {
     try {
       const res = await propuestasService.importarXls(convocatoria.id, file);
       alert(
-        `Solicitudes importadas: ${res.importadas} propuestas nuevas.`,
+        `Solicitudes importadas: ${res.importadas} (nuevas o actualizadas).`,
       );
       // Volver a la primera página y limpiar búsquedas para ver las nuevas.
       setPage(1);

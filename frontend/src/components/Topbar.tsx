@@ -17,6 +17,7 @@ const DEFAULT_NAV: NavItem[] = [
   { label: 'Inscripciones',  href: '/inscripciones' },
   { label: 'Propuestas',     href: '/propuestas' },
   { label: 'Ranking',        href: '/ranking' },
+  { label: 'Asignaciones',   href: '/asignaciones' },
 ];
 
 interface IndicatorStyle {
