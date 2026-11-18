@@ -58,13 +58,7 @@ export class RankingController {
     @Query('q') q?: string,
     @Query('carrera') carrera?: string,
   ) {
-    return this.service.getRanking(
-      convocatoriaId,
-      +page,
-      +limit,
-      q,
-      carrera,
-    );
+    return this.service.getRanking(convocatoriaId, +page, +limit, q, carrera);
   }
 
   @Get('estudiante/:dni')

@@ -1,12 +1,14 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { existsSync, unlinkSync } from 'fs';
 import {
   ImportacionService,
   ResultadoImportacion,
 } from './importacion.service';
 import { IMPORTACION_QUEUE } from './importacion.constants';
 import { RankingService } from '../ranking/ranking.service';
+import { QueueJob } from '../queue/job.interface';
+import { QueueService } from '../queue/queue.service';
+import { StorageService } from '../storage/storage.service';
 
 export interface JobCargarPlanilla {
   convocatoriaId: string;
@@ -14,39 +16,44 @@ export interface JobCargarPlanilla {
   originalname: string;
 }
 
-@Processor(IMPORTACION_QUEUE, {
-  concurrency: 1,
-  lockDuration: 30 * 60 * 1000,
-})
-export class ImportacionProcessor extends WorkerHost {
+@Injectable()
+export class ImportacionProcessor implements OnModuleInit {
   private readonly logger = new Logger(ImportacionProcessor.name);
 
   constructor(
     private readonly importacionService: ImportacionService,
     private readonly rankingService: RankingService,
-  ) {
-    super();
+    private readonly queueService: QueueService,
+    private readonly storageService: StorageService,
+  ) {}
+
+  onModuleInit(): void {
+    this.queueService.registerHandler(IMPORTACION_QUEUE, (job) =>
+      this.process(job as QueueJob<JobCargarPlanilla>),
+    );
   }
 
-  async process(job: Job<JobCargarPlanilla>): Promise<ResultadoImportacion> {
+  async process(
+    job: QueueJob<JobCargarPlanilla>,
+  ): Promise<ResultadoImportacion> {
     const { convocatoriaId, filePath, originalname } = job.data;
     this.logger.log(
       `Iniciando importación job=${job.id} convocatoria=${convocatoriaId} archivo=${originalname}`,
     );
 
+    const localPath = await this.storageService.downloadToFile(filePath);
     try {
       const resultado = await this.importacionService.cargarPlanilla(
         convocatoriaId,
-        { path: filePath, originalname },
+        { path: localPath, originalname },
         (rowsProcessed) => {
-          job.updateProgress({ rowsProcessed });
+          void job.updateProgress({ rowsProcessed }).catch(() => undefined);
         },
       );
       this.logger.log(
         `Importación completada job=${job.id}: ${resultado.filasValidas} filas válidas de ${resultado.filasTotal}`,
       );
 
-      // Auto-calcular ranking tras cargar la planilla
       try {
         this.logger.log(
           `Recalculando ranking automáticamente para convocatoria=${convocatoriaId}...`,
@@ -56,19 +63,14 @@ export class ImportacionProcessor extends WorkerHost {
           `Ranking recalculado exitosamente para convocatoria=${convocatoriaId}`,
         );
       } catch (rankingErr: any) {
-        // El error de ranking no debe hacer fallar el job de importación
         this.logger.warn(
           `Auto-ranking falló (no crítico): ${rankingErr.message}`,
         );
       }
 
       return resultado;
-    } catch (err: any) {
-      this.logger.error(
-        `Falló importación job=${job.id}: ${err.message}`,
-        err.stack,
-      );
-      throw err;
+    } finally {
+      if (existsSync(localPath)) unlinkSync(localPath);
     }
   }
 }

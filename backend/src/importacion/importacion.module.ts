@@ -1,21 +1,22 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
 import { ImportacionController } from './importacion.controller';
 import { ImportacionService } from './importacion.service';
+import { ImportacionProcessor } from './importacion.processor';
 import { PrismaModule } from '../prisma/prisma.module';
-import { PadronService } from '../padron/padron.service';
-import { IMPORTACION_QUEUE } from './importacion.constants';
+import { PadronModule } from '../padron/padron.module';
+import { RankingModule } from '../ranking/ranking.module';
+import { QueueModule } from '../queue/queue.module';
+import { StorageModule } from '../storage/storage.module';
 
-// Proceso API. Encola jobs de carga (InjectQueue) y además expone las
-// lecturas (listar cargas, ver padrón/inscripciones) que no requieren
-// procesar ningún archivo — esas se resuelven al toque contra la DB, no
-// tienen que pasar por el worker.
 @Module({
   imports: [
     PrismaModule,
-    BullModule.registerQueue({ name: IMPORTACION_QUEUE }),
+    QueueModule,
+    StorageModule,
+    PadronModule,
+    RankingModule,
   ],
-  providers: [ImportacionService, PadronService],
+  providers: [ImportacionService, ImportacionProcessor],
   controllers: [ImportacionController],
 })
 export class ImportacionModule {}

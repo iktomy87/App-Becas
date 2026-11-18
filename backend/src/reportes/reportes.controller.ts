@@ -14,8 +14,7 @@ export class ReportesController {
     @Param('convocatoriaId') convocatoriaId: string,
     @Res() res: Response,
   ) {
-    const filePath =
-      await this.service.generarReporteAsignacion(convocatoriaId);
-    res.download(filePath, 'reporte_asignacion.xlsx');
+    const url = await this.service.generarReporteAsignacion(convocatoriaId);
+    res.redirect(url);
   }
 }

@@ -15,7 +15,7 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  app.enableCors({ origin: process.env.CORS_ORIGIN });
 
   const config = new DocumentBuilder()
     .setTitle('Plataforma de Becas — API')

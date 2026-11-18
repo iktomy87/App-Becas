@@ -1,8 +1,9 @@
-import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaModule } from './prisma/prisma.module';
+import { QueueModule } from './queue/queue.module';
+import { StorageModule } from './storage/storage.module';
 import { ConvocatoriasModule } from './convocatorias/convocatorias.module';
 import { PropuestasModule } from './propuestas/propuestas.module';
 import { PadronModule } from './padron/padron.module';
@@ -17,13 +18,9 @@ import { EspecialidadesModule } from './especialidades/especialidades.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot(),
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
-    }),
     PrismaModule,
+    QueueModule,
+    StorageModule,
     ConvocatoriasModule,
     PropuestasModule,
     PadronModule,

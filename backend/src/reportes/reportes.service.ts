@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
-import * as path from 'path';
-import * as fs from 'fs';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class ReportesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
 
   async generarReporteAsignacion(convocatoriaId: string): Promise<string> {
     const corrida = await this.prisma.corridaAsignacion.findFirst({
@@ -53,12 +55,18 @@ export class ReportesService {
       ]);
     }
 
-    const dir = './uploads/reportes';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const filename = `reporte_asignacion_${convocatoriaId}_${Date.now()}.xlsx`;
-    const filePath = path.join(dir, filename);
-    await workbook.xlsx.writeFile(filePath);
+    const fileName = `reporte_asignacion_${convocatoriaId}_${Date.now()}.xlsx`;
+    const path = `reportes/${convocatoriaId}/${fileName}`;
+    const buffer = await workbook.xlsx.writeBuffer();
+    await this.storageService.uploadBuffer(
+      path,
+      Buffer.from(buffer),
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
 
-    return filePath;
+    return this.storageService.createSignedDownloadUrl(
+      path,
+      'reporte_asignacion.xlsx',
+    );
   }
 }

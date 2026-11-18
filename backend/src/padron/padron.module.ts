@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
 import { PadronController } from './padron.controller';
 import { PadronService } from './padron.service';
 import { PadronProcessor } from './padron.processor';
-import { PADRON_QUEUE } from './padron.processor';
+import { PrismaModule } from '../prisma/prisma.module';
+import { QueueModule } from '../queue/queue.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: PADRON_QUEUE })],
+  imports: [PrismaModule, QueueModule, StorageModule],
   controllers: [PadronController],
   providers: [PadronService, PadronProcessor],
   exports: [PadronService],

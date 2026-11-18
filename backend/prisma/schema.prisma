@@ -45,6 +45,13 @@ enum EstadoAsignacion {
   NO_ASIGNADO
 }
 
+enum EstadoJob {
+  WAITING
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
 // ─── Convocatoria ─────────────────────────────────────────────────────────────
 
 model Convocatoria {
@@ -268,4 +275,25 @@ model ResultadoAsignacion {
 
   @@unique([corridaId, padronId])
   @@map("resultados_asignacion")
+}
+
+// ─── Cola persistida en Postgres ──────────────────────────────────────────────
+
+model JobQueue {
+  id         String    @id @default(uuid())
+  queue      String
+  name       String
+  data       Json
+  state      EstadoJob @default(WAITING)
+  progress   Json?
+  result     Json?
+  error      String?
+  lockedAt   DateTime? @map("locked_at")
+  lockedBy   String?   @map("locked_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@index([queue, state, createdAt])
+  @@index([state, lockedAt])
+  @@map("job_queue")
 }

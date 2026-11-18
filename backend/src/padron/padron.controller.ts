@@ -1,55 +1,60 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Param,
-  UploadedFile,
-  UseInterceptors,
   BadRequestException,
+  Body,
+  Controller,
+  Get,
   NotFoundException,
+  Param,
+  Post,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { ApiTags, ApiOperation, ApiConsumes } from '@nestjs/swagger';
+import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PADRON_QUEUE, JobCargarPadron } from './padron.processor';
+import { QueueService } from '../queue/queue.service';
+import { StorageService } from '../storage/storage.service';
 
 @ApiTags('Padrón')
 @Controller('convocatorias/:convocatoriaId/padron')
 export class PadronController {
   constructor(
-    @InjectQueue(PADRON_QUEUE)
-    private readonly padronQueue: Queue<JobCargarPadron>,
+    private readonly queueService: QueueService,
+    private readonly storageService: StorageService,
   ) {}
+
+  @Post('upload-url')
+  @ApiOperation({ summary: 'URL firmada para subir el Excel del padrón' })
+  @ApiConsumes('application/json')
+  crearUrlSubida(
+    @Param('convocatoriaId') convocatoriaId: string,
+    @Body() body: { filename: string },
+  ) {
+    if (!body?.filename)
+      throw new BadRequestException('Falta el nombre del archivo');
+    return this.storageService.createSignedUploadUrl(
+      `padrones/${convocatoriaId}`,
+      body.filename,
+    );
+  }
 
   @Post()
   @ApiOperation({
     summary:
       'Cargar maestro.xlsx como padrón académico de la convocatoria (procesado en background)',
   })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: '/tmp/uploads',
-        filename: (_req, file, cb) =>
-          cb(null, `padron_${Date.now()}${extname(file.originalname)}`),
-      }),
-    }),
-  )
+  @ApiConsumes('application/json')
   async cargar(
     @Param('convocatoriaId') convocatoriaId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { path: string; originalname: string },
   ) {
-    if (!file) throw new BadRequestException('Falta el archivo');
+    if (!body?.path || !body?.originalname) {
+      throw new BadRequestException('Faltan path u originalname del archivo');
+    }
+    this.storageService.assertPath(body.path, `padrones/${convocatoriaId}`);
 
-    const job = await this.padronQueue.add('cargar-padron', {
+    const job = await this.queueService.enqueue(PADRON_QUEUE, 'cargar-padron', {
       convocatoriaId,
-      filePath: file.path,
-      originalname: file.originalname,
-    });
+      filePath: body.path,
+      originalname: body.originalname,
+    } satisfies JobCargarPadron);
 
     return {
       jobId: job.id,
@@ -60,15 +65,8 @@ export class PadronController {
   @Get('status/:jobId')
   @ApiOperation({ summary: 'Estado del job de carga de padrón' })
   async getStatus(@Param('jobId') jobId: string) {
-    const job = await this.padronQueue.getJob(jobId);
-    if (!job) throw new NotFoundException('Job no encontrado');
-
-    const state = await job.getState();
-    return {
-      state,
-      progress: job.progress,
-      resultado: state === 'completed' ? job.returnvalue : undefined,
-      error: state === 'failed' ? job.failedReason : undefined,
-    };
+    const status = await this.queueService.status(jobId);
+    if (!status) throw new NotFoundException('Job no encontrado');
+    return status;
   }
 }

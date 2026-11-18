@@ -1,7 +1,9 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { existsSync, unlinkSync } from 'fs';
 import { PadronService } from './padron.service';
+import { QueueJob } from '../queue/job.interface';
+import { QueueService } from '../queue/queue.service';
+import { StorageService } from '../storage/storage.service';
 
 export const PADRON_QUEUE = 'padron';
 
@@ -11,38 +13,40 @@ export interface JobCargarPadron {
   originalname: string;
 }
 
-@Processor(PADRON_QUEUE, {
-  concurrency: 1,
-  lockDuration: 30 * 60 * 1000, // 30 min
-})
-export class PadronProcessor extends WorkerHost {
+@Injectable()
+export class PadronProcessor implements OnModuleInit {
   private readonly logger = new Logger(PadronProcessor.name);
 
-  constructor(private readonly padronService: PadronService) {
-    super();
+  constructor(
+    private readonly padronService: PadronService,
+    private readonly queueService: QueueService,
+    private readonly storageService: StorageService,
+  ) {}
+
+  onModuleInit(): void {
+    this.queueService.registerHandler(PADRON_QUEUE, (job) =>
+      this.process(job as QueueJob<JobCargarPadron>),
+    );
   }
 
-  async process(job: Job<JobCargarPadron>) {
+  async process(job: QueueJob<JobCargarPadron>) {
     const { convocatoriaId, filePath, originalname } = job.data;
     this.logger.log(
       `Iniciando carga de padrón job=${job.id} convocatoria=${convocatoriaId} archivo=${originalname}`,
     );
 
+    const localPath = await this.storageService.downloadToFile(filePath);
     try {
       const resultado = await this.padronService.cargarMaestro(
-        filePath,
+        localPath,
         convocatoriaId,
       );
       this.logger.log(
         `Padrón cargado job=${job.id}: ${resultado.procesadas} procesadas, ${resultado.errores} errores`,
       );
       return resultado;
-    } catch (err: any) {
-      this.logger.error(
-        `Falló carga de padrón job=${job.id}: ${err.message}`,
-        err.stack,
-      );
-      throw err;
+    } finally {
+      if (existsSync(localPath)) unlinkSync(localPath);
     }
   }
 }
