@@ -15,8 +15,6 @@ function toRankingRow(r: ResultadoRanking): RankingRow {
     nombre:   r.padron.nombreCompleto,
     dni:      r.padron.dni,
     legajo:   r.padron.legajo,
-    // El backend ya resuelve el nombre de la carrera; antes se mostraba el
-    // código numérico crudo porque el select no lo traía.
     carrera:  r.padron.especialidad ?? `Esp. ${r.padron.especialidadCodigo ?? '—'}`,
     promedio: Number(r.padron.promedio).toFixed(2).replace('.', ','),
     factor:   Number(r.puntajeTotal).toFixed(2).replace('.', ','),

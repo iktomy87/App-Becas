@@ -45,9 +45,12 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 10_000):
     } catch {
       throw new Error(`Failed to parse JSON response: ${text}`);
     }
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
-      throw new Error(`La petición a ${path} tardó demasiado (timeout ${timeoutMs / 1000}s). Verificá que el servidor esté corriendo.`);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(
+        `La petición a ${path} tardó demasiado (timeout ${timeoutMs / 1000}s). Verificá que el servidor esté corriendo.`,
+        { cause: err },
+      );
     }
     throw err;
   } finally {
@@ -127,6 +130,59 @@ function uploadWithProgress<T>(
   });
 }
 
+function uploadToUrl(
+  url: string,
+  file: File,
+  options?: { inactivityTimeoutMs?: number; onProgress?: (pct: number) => void },
+): Promise<void> {
+  const inactivityTimeoutMs = options?.inactivityTimeoutMs ?? 200_000;
+  const onProgress = options?.onProgress;
+
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let timer: ReturnType<typeof setTimeout>;
+
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        xhr.abort();
+        reject(
+          new Error(
+            `La subida se detuvo (sin progreso por ${inactivityTimeoutMs / 1000}s). Verificá tu conexión.`,
+          ),
+        );
+      }, inactivityTimeoutMs);
+    };
+
+    xhr.upload.addEventListener('progress', (e) => {
+      reset();
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+    xhr.upload.addEventListener('loadend', () => clearTimeout(timer));
+    xhr.addEventListener('load', () => {
+      clearTimeout(timer);
+      if (xhr.status >= 400) {
+        let body: unknown;
+        try { body = JSON.parse(xhr.responseText); } catch { body = xhr.responseText; }
+        reject(new ApiError(xhr.status, body));
+        return;
+      }
+      resolve();
+    });
+    xhr.addEventListener('error', () => {
+      clearTimeout(timer);
+      reject(new Error('Error de red al subir el archivo a Storage.'));
+    });
+
+    xhr.open('PUT', url);
+    if (file.type) xhr.setRequestHeader('Content-Type', file.type);
+    reset();
+    xhr.send(file);
+  });
+}
+
 export const http = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
@@ -141,4 +197,10 @@ export const http = {
    */
   upload: <T>(path: string, formData: FormData, onProgress?: (pct: number) => void) =>
     uploadWithProgress<T>(path, formData, { inactivityTimeoutMs: 200_000, onProgress }),
+
+  uploadToUrl: (
+    url: string,
+    file: File,
+    onProgress?: (pct: number) => void,
+  ) => uploadToUrl(url, file, { onProgress }),
 };

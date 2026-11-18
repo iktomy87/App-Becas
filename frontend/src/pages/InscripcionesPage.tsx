@@ -7,8 +7,6 @@ import type { Convocatoria, Especialidad, Inscripcion } from '../services/types'
 import './InscripcionesPage.css';
 import './PanelPrincipal.css';
 
-// Filas por página: las filas de inscripciones incluyen la lista de
-// prioridades, así que son más altas que las del ranking.
 const PAGE_SIZE = 20;
 
 export function InscripcionesPage() {
@@ -23,9 +21,7 @@ export function InscripcionesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Resolver la convocatoria activa con la misma regla que usan el panel y
-  // `/ranking` (antes esto era una tercera copia de la regla, que podía
-  // divergir de las otras pantallas).
+  // Resolver la convocatoria activa con la misma regla que usan el panel y `/ranking`
   useEffect(() => {
     let cancelled = false;
     async function resolver() {

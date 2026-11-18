@@ -7,51 +7,55 @@ import type {
   ResultadoImportacionPlanilla,
 } from './types';
 
+interface SignedUpload {
+  path: string;
+  signedUrl: string;
+  token: string;
+}
 
 export const importacionService = {
-  /** POST /convocatorias/:convocatoriaId/planillas  (multipart) */
-  cargar: (convocatoriaId: string, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    return http.upload<{ jobId: string }>(
+  cargar: async (convocatoriaId: string, file: File) => {
+    const ticket = await http.post<SignedUpload>(
+      `/convocatorias/${convocatoriaId}/planillas/upload-url`,
+      { filename: file.name },
+    );
+    await http.uploadToUrl(ticket.signedUrl, file);
+    return http.post<{ jobId: string }>(
       `/convocatorias/${convocatoriaId}/planillas`,
-      form,
+      { path: ticket.path, originalname: file.name },
     );
   },
 
-  /** GET /convocatorias/:convocatoriaId/planilla/status/:jobId */
   status: (convocatoriaId: string, jobId: string) =>
     http.get<EstadoJob<ResultadoImportacionPlanilla>>(
       `/convocatorias/${convocatoriaId}/planilla/status/${jobId}`,
     ),
 
-  /** POST /convocatorias/:convocatoriaId/padron  (multipart) */
-  cargarPadron: (convocatoriaId: string, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    return http.upload<{ jobId: string; mensaje: string }>(
+  cargarPadron: async (convocatoriaId: string, file: File) => {
+    const ticket = await http.post<SignedUpload>(
+      `/convocatorias/${convocatoriaId}/padron/upload-url`,
+      { filename: file.name },
+    );
+    await http.uploadToUrl(ticket.signedUrl, file);
+    return http.post<{ jobId: string; mensaje: string }>(
       `/convocatorias/${convocatoriaId}/padron`,
-      form,
+      { path: ticket.path, originalname: file.name },
     );
   },
 
-  /** GET /convocatorias/:convocatoriaId/padron/status/:jobId */
   statusPadron: (convocatoriaId: string, jobId: string) =>
     http.get<EstadoJob<ResultadoImportacionPadron>>(
       `/convocatorias/${convocatoriaId}/padron/status/${jobId}`,
     ),
 
-  /** GET /convocatorias/:convocatoriaId/planillas */
   listar: (convocatoriaId: string) =>
     http.get<CargaPlanilla[]>(`/convocatorias/${convocatoriaId}/planillas`),
 
-  /** GET /convocatorias/:convocatoriaId/planillas/:cargaId */
   obtener: (convocatoriaId: string, cargaId: string) =>
     http.get<CargaPlanilla>(
       `/convocatorias/${convocatoriaId}/planillas/${cargaId}`,
     ),
 
-  /** GET /convocatorias/:convocatoriaId/planillas/inscripciones (paginado + filtros) */
   listarInscripciones: (
     convocatoriaId: string,
     page = 1,
