@@ -177,7 +177,7 @@ function uploadToUrl(
     });
 
     xhr.open('PUT', url);
-    if (file.type) xhr.setRequestHeader('Content-Type', file.type);
+    xhr.setRequestHeader('Content-Type', 'text/plain');
     reset();
     xhr.send(file);
   });
