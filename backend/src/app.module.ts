@@ -13,6 +13,8 @@ import { AsignacionModule } from './asignacion/asignacion.module';
 import { ConvocatoriaFacadeModule } from './convocatoria-facade/convocatoria-facade.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { EspecialidadesModule } from './especialidades/especialidades.module';
+import { AppService } from './app.service';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -31,5 +33,7 @@ import { EspecialidadesModule } from './especialidades/especialidades.module';
     ReportesModule,
     EspecialidadesModule,
   ],
+  controllers: [AppController],   
+  providers: [AppService],
 })
 export class AppModule {}
