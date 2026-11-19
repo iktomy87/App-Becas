@@ -3,6 +3,7 @@
 # ---------- Base: apt + openssl UNA sola vez (compartida por todas las etapas) ----------
 FROM node:20-slim AS base
 WORKDIR /app
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 # `procps` es obligatorio, no opcional: `nest start --watch` lanza `ps -o pid
 # --no-headers --ppid <n>` para seguir los procesos hijos. node:20-slim no lo
 # trae, así que sin esto el watcher compila bien, imprime "Found 0 errors.
