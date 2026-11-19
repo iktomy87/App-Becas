@@ -2,6 +2,9 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { WorkerRootModule } from './worker-root.module';
+import { setDefaultResultOrder } from 'node:dns';
+
+setDefaultResultOrder('ipv4first');
 
 async function bootstrap() {
   const logger = new Logger('WorkerBootstrap');
