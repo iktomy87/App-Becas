@@ -25,7 +25,10 @@ export interface CreateConvocatoriaDto {
   fechaCierre:   string;
 }
 
-export interface UpdateConvocatoriaDto extends Partial<CreateConvocatoriaDto> {}
+// Una interfaz vacía que sólo extiende (`extends Partial<...> {}`) dispara
+// no-empty-object-type; un alias de tipo es exactamente equivalente y no deja
+// miembros vacíos.
+export type UpdateConvocatoriaDto = Partial<CreateConvocatoriaDto>;
 
 // ─── Especialidad (catálogo del backend GET /especialidades) ─────────────────
 
@@ -52,6 +55,13 @@ export interface Propuesta {
   horario?:            string;
   estado:              EstadoPropuesta;
   convocatoriaId:      string;
+}
+
+export interface PropuestasPage {
+  data:  Propuesta[];
+  total: number;
+  page:  number;
+  limit: number;
 }
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────
@@ -251,15 +261,28 @@ export interface ResultadoAsignacion {
     legajo:         string;
   };
   propuesta?: {
-    titulo: string;
-    tipo:   TipoPropuesta;
+    idExterno?:   string;
+    titulo:       string;
+    tipo:         TipoPropuesta;
+    dependencia?: string | null;
   };
 }
 
+/** Resumen de la corrida de asignación vigente (previo a los resultados). */
+export interface AsignacionResumen {
+  id:                string;
+  estado:            EstadoCorrida;
+  totalPostulantes:  number;
+  totalAsignados:    number;
+  totalNoAsignados:  number;
+  vigente:           boolean;
+}
+
 export interface AsignacionPage {
-  data:  ResultadoAsignacion[];
-  total: number;
-  page:  number;
-  limit: number;
+  resumen: AsignacionResumen;
+  data:    ResultadoAsignacion[];
+  total:   number;
+  page:    number;
+  limit:   number;
 }
 

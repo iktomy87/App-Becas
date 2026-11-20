@@ -45,8 +45,15 @@ export interface DatosPuntaje {
 
 export interface RankingStrategy {
   calcularPuntaje(datos: DatosPuntaje): PuntajeDesglose;
+  /**
+   * `totalMateriasPlan` es el denominador del término de avance y además el
+   * total contra el que se mide cuánto le queda por cursar al estudiante:
+   * si `totalMateriasPlan - (regularizadas + aprobadas) < 3` se lo exime del
+   * mínimo de `cursando` (ver `ranking-v1.strategy.ts`).
+   */
   verificarHabilitacion(
     padron: PadronAcademico,
     config: { minMateriasCursando: number; minRegularizadas: number },
+    totalMateriasPlan: number,
   ): { habilitado: boolean; motivo?: string };
 }

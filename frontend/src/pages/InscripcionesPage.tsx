@@ -199,9 +199,6 @@ export function InscripcionesPage() {
             if (e.key === 'Enter') aplicarBusqueda();
           }}
         />
-        <select className="select-like">
-          <option>Todos los tipos</option>
-        </select>
         <select
           className="select-like"
           value={carrera}

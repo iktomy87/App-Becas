@@ -4,6 +4,9 @@ import { Topbar } from './components/Topbar';
 import { PanelPrincipal } from './pages/PanelPrincipal';
 import { RankingPage } from './pages/RankingPage';
 import { InscripcionesPage } from './pages/InscripcionesPage';
+import { PropuestasPage } from './pages/PropuestasPage';
+import { ConvocatoriasPage } from './pages/ConvocatoriasPage';
+import { AsignacionesPage } from './pages/AsignacionesPage';
 
 function App() {
   return (
@@ -11,8 +14,11 @@ function App() {
       <Topbar />
       <Routes>
         <Route path="/" element={<PanelPrincipal />} />
+        <Route path="/convocatorias" element={<ConvocatoriasPage />} />
         <Route path="/inscripciones" element={<InscripcionesPage />} />
+        <Route path="/propuestas" element={<PropuestasPage />} />
         <Route path="/ranking" element={<RankingPage />} />
+        <Route path="/asignaciones" element={<AsignacionesPage />} />
       </Routes>
     </>
   );

@@ -217,10 +217,6 @@ export function RankingPage() {
             if (e.key === 'Enter') aplicarBusqueda();
           }}
         />
-        <div className="select-like">
-          Todos los tipos
-          <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
-        </div>
         <select
           className="select-like"
           value={carrera}

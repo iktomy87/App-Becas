@@ -12,9 +12,12 @@ interface TopbarProps {
 }
 
 const DEFAULT_NAV: NavItem[] = [
-  { label: 'Inicio',        href: '/' },
-  { label: 'Inscripciones', href: '/inscripciones' },
-  { label: 'Ranking',       href: '/ranking' },
+  { label: 'Inicio',         href: '/' },
+  { label: 'Convocatorias',  href: '/convocatorias' },
+  { label: 'Inscripciones',  href: '/inscripciones' },
+  { label: 'Propuestas',     href: '/propuestas' },
+  { label: 'Ranking',        href: '/ranking' },
+  { label: 'Asignaciones',   href: '/asignaciones' },
 ];
 
 interface IndicatorStyle {

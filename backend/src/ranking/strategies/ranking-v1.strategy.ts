@@ -62,8 +62,17 @@ export class RankingV1Strategy implements RankingStrategy {
   verificarHabilitacion(
     padron: PadronAcademico,
     config: { minMateriasCursando: number; minRegularizadas: number },
+    totalMateriasPlan: number,
   ): { habilitado: boolean; motivo?: string } {
-    if (padron.cursando < config.minMateriasCursando) {
+    // Materias cursadas = regularizadas + aprobadas. A quién le quedan menos de
+    // 3 materias por cursar no se le puede exigir que curse 3: se lo exime del
+    // mínimo de `cursando`. Es la misma excepción que el orden de mérito marca
+    // como "Le quedan menos de 3 mat por cursar" en la columna "Cursa +de2".
+    const porCursar =
+      totalMateriasPlan - (padron.regularizadas + padron.aprobadas);
+    const eximido = totalMateriasPlan > 0 && porCursar < 3;
+
+    if (padron.cursando < config.minMateriasCursando && !eximido) {
       return {
         habilitado: false,
         motivo: `Cursa ${padron.cursando} materias (mínimo requerido: ${config.minMateriasCursando})`,

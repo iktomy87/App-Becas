@@ -1,0 +1,292 @@
+/* ─── ConvocatoriasPage ──────────────────────────────────────────────────── */
+.convocatorias-page {
+  /* Layout handled by .content from PanelPrincipal.css */
+}
+
+.convocatorias-page .error-text {
+  color: #e2574c;
+}
+
+/* Filters */
+.convocatorias-page .filters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.convocatorias-page .filters input[type="text"] {
+  flex: 1;
+  max-width: 340px;
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.convocatorias-page .filters input[type="text"]:focus {
+  border-color: var(--orange);
+}
+.convocatorias-page .filters input::placeholder {
+  color: #b0b4ba;
+}
+.convocatorias-page .select-like {
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  background: #fff;
+  color: var(--text-dark);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.convocatorias-page .select-like:focus {
+  border-color: var(--orange);
+}
+.convocatorias-page .filters .spacer {
+  flex: 1;
+}
+
+/* Table */
+.convocatorias-page .table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.convocatorias-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.convocatorias-page thead th {
+  text-align: left;
+  background: #fafafa;
+  color: var(--text-gray);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+.convocatorias-page thead th:last-child {
+  border-right: none;
+}
+.convocatorias-page tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f3f4f6;
+  vertical-align: middle;
+  color: var(--text-dark);
+}
+.convocatorias-page tbody td:last-child {
+  border-right: none;
+}
+.convocatorias-page tbody tr:last-child td {
+  border-bottom: none;
+}
+.convocatorias-page tbody tr:hover td {
+  background: #fafafa;
+}
+.convocatorias-page .empty-message {
+  text-align: center;
+  color: var(--text-gray);
+  padding: 40px;
+}
+
+/* Nombre + ID */
+.convocatorias-page .conv-nombre {
+  font-weight: 700;
+  margin: 0 0 2px 0;
+}
+.convocatorias-page .conv-id {
+  color: var(--text-gray);
+  font-size: 11px;
+  margin: 0;
+  font-family: monospace;
+}
+
+/* Badges de estado */
+.badge-estado {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge-abierta {
+  background: #dcfce7;
+  color: #15803d;
+}
+.badge-cerrada {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.badge-ranking {
+  background: #fef9c3;
+  color: #92400e;
+}
+.badge-asignada {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Acciones */
+.convocatorias-page .actions-cell {
+  text-align: right;
+  vertical-align: middle;
+}
+.convocatorias-page .ver-ficha {
+  display: inline-block;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.convocatorias-page .ver-ficha:hover {
+  background: #fff4ea;
+}
+
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 520px;
+  padding: 28px 32px 24px;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+.form-group input {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-group input:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+.form-group input[type="date"] {
+  cursor: pointer;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-error {
+  font-size: 13px;
+  color: #e2574c;
+  margin: 0 0 16px 0;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .convocatorias-page {
+    padding: 16px;
+  }
+  .convocatorias-page .table-wrap {
+    overflow-x: auto;
+  }
+  .convocatorias-page table {
+    min-width: 700px;
+  }
+  .modal-box {
+    margin: 16px;
+    padding: 20px;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

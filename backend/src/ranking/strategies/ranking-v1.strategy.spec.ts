@@ -105,6 +105,76 @@ describe('RankingV1Strategy', () => {
     });
   });
 
+  describe('verificarHabilitacion', () => {
+    const config = { minMateriasCursando: 3, minRegularizadas: 1 };
+    // `PadronAcademico` completo no hace falta: la habilitación sólo lee
+    // `cursando`, `regularizadas` y `aprobadas`.
+    const padron = (campos: {
+      cursando: number;
+      regularizadas: number;
+      aprobadas: number;
+    }) => campos as any;
+
+    it('habilita al que cursa 3 o más materias', () => {
+      const r = strategy.verificarHabilitacion(
+        padron({ cursando: 3, regularizadas: 5, aprobadas: 10 }),
+        config,
+        45,
+      );
+      expect(r.habilitado).toBe(true);
+    });
+
+    it('inhabilita al que cursa menos de 3 si todavía le quedan materias', () => {
+      // 45 - (5 + 10) = 30 por cursar → no aplica la excepción.
+      const r = strategy.verificarHabilitacion(
+        padron({ cursando: 2, regularizadas: 5, aprobadas: 10 }),
+        config,
+        45,
+      );
+      expect(r.habilitado).toBe(false);
+      expect(r.motivo).toContain('Cursa 2 materias');
+    });
+
+    it('exime del mínimo de cursando a quien le quedan menos de 3 por cursar', () => {
+      // 42 - (3 + 38) = 1 por cursar → eximido aunque curse 1.
+      const r = strategy.verificarHabilitacion(
+        padron({ cursando: 1, regularizadas: 3, aprobadas: 38 }),
+        config,
+        42,
+      );
+      expect(r.habilitado).toBe(true);
+    });
+
+    it('no exime cuando le quedan exactamente 3 por cursar', () => {
+      // 42 - (3 + 36) = 3 → el umbral es "< 3", no "<=".
+      const r = strategy.verificarHabilitacion(
+        padron({ cursando: 1, regularizadas: 3, aprobadas: 36 }),
+        config,
+        42,
+      );
+      expect(r.habilitado).toBe(false);
+    });
+
+    it('sigue exigiendo el mínimo de regularizadas aunque esté eximido', () => {
+      const r = strategy.verificarHabilitacion(
+        padron({ cursando: 1, regularizadas: 0, aprobadas: 44 }),
+        config,
+        45,
+      );
+      expect(r.habilitado).toBe(false);
+      expect(r.motivo).toContain('regularizadas');
+    });
+
+    it('un plan en 0 no dispara la excepción', () => {
+      const r = strategy.verificarHabilitacion(
+        padron({ cursando: 0, regularizadas: 0, aprobadas: 0 }),
+        config,
+        0,
+      );
+      expect(r.habilitado).toBe(false);
+    });
+  });
+
   describe('fórmula base', () => {
     it('el desglose suma exactamente al total', () => {
       const d = strategy.calcularPuntaje(filaOficial);
