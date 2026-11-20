@@ -27,6 +27,16 @@ export class AsignacionEngineService {
       data: { estado: EstadoCorrida.INVALIDADA, vigente: false },
     });
 
+    // Reiniciar los cupos de la convocatoria: cada corrida arranca desde los
+    // totales. Las corridas anteriores (y las bajas manuales) ya los
+    // consumieron, así que sin este reinicio una re-ejecución iría asignando
+    // cada vez menos gente.
+    await this.prisma.$executeRaw`
+      UPDATE propuestas
+      SET vacantes_disponibles = vacantes_total
+      WHERE convocatoria_id = ${convocatoriaId}
+    `;
+
     // Nueva corrida
     const corrida = await this.prisma.corridaAsignacion.create({
       data: { convocatoriaId, estado: EstadoCorrida.EN_CURSO, vigente: true },

@@ -5,17 +5,29 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Prisma } from '@prisma/client';
-import { EstadoConvocatoria, EstadoPropuesta } from '@prisma/client';
+import {
+  EstadoConvocatoria,
+  EstadoPropuesta,
+  TipoPropuesta,
+} from '@prisma/client';
 import { CreatePropuestaDto, UpdateVacantesDto } from './dto/propuesta.dto';
 
 @Injectable()
 export class PropuestasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(convocatoriaId?: string, page = 1, limit = 50, q?: string) {
+  async findAll(
+    convocatoriaId?: string,
+    page = 1,
+    limit = 50,
+    q?: string,
+    tipo?: TipoPropuesta,
+  ) {
     const termino = q?.trim();
     const where: Prisma.PropuestaWhereInput = {
       ...(convocatoriaId && { convocatoriaId }),
+      // Filtro por tipo (Servicio / Investigación) desde `/propuestas`.
+      ...(tipo && { tipo }),
       // Búsqueda por código, título o responsable (misma semántica `contains`
       // case-insensitive que las demás pantallas). Sin `q`, el where queda
       // como antes: solo `convocatoriaId`.

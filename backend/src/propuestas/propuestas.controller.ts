@@ -17,6 +17,7 @@ import * as ExcelJS from 'exceljs';
 import * as XLSX from 'xlsx';
 import { PropuestasService } from './propuestas.service';
 import { CreatePropuestaDto, UpdateVacantesDto } from './dto/propuesta.dto';
+import { TipoPropuesta } from '@prisma/client';
 
 /**
  * Lee las filas del XLS de solicitudes.
@@ -65,13 +66,25 @@ export class PropuestasController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'q', required: false, type: String })
+  @ApiQuery({
+    name: 'tipo',
+    required: false,
+    enum: ['SERVICIO', 'INVESTIGACION'],
+    description: 'Filtra por tipo de propuesta',
+  })
   findAll(
     @Query('convocatoriaId') convocatoriaId?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 50,
     @Query('q') q?: string,
+    @Query('tipo') tipo?: string,
   ) {
-    return this.service.findAll(convocatoriaId, +page, +limit, q);
+    // Un tipo fuera del enum se ignora en vez de romper la consulta.
+    const filtroTipo =
+      tipo === TipoPropuesta.SERVICIO || tipo === TipoPropuesta.INVESTIGACION
+        ? tipo
+        : undefined;
+    return this.service.findAll(convocatoriaId, +page, +limit, q, filtroTipo);
   }
 
   @Get(':id')

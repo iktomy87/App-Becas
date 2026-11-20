@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { propuestasService } from '../services/propuestas.service';
 import { convocatoriasService } from '../services/convocatorias.service';
 import { seleccionarConvocatoriaActiva } from '../hooks/convocatoriaActiva';
-import type { Convocatoria, Propuesta } from '../services/types';
+import type { Convocatoria, Propuesta, TipoPropuesta } from '../services/types';
 import './PropuestasPage.css';
 import './PanelPrincipal.css';
 
@@ -26,6 +26,7 @@ export function PropuestasPage() {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [qAplicada, setQAplicada] = useState('');
+  const [tipo, setTipo] = useState<TipoPropuesta | ''>('');
   const [convocatoria, setConvocatoria] = useState<Convocatoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export function PropuestasPage() {
           page,
           PAGE_SIZE,
           qAplicada,
+          tipo || undefined,
         );
         if (cancelled) return;
         setPropuestas(res.data);
@@ -99,7 +101,7 @@ export function PropuestasPage() {
     }
     void cargar();
     return () => { cancelled = true; };
-  }, [convocatoria, page, qAplicada, revision]);
+  }, [convocatoria, page, qAplicada, tipo, revision]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -219,6 +221,19 @@ export function PropuestasPage() {
             if (e.key === 'Enter') aplicarBusqueda();
           }}
         />
+        <select
+          className="select-like"
+          value={tipo}
+          onChange={(e) => {
+            setTipo(e.target.value as TipoPropuesta | '');
+            setPage(1);
+          }}
+          aria-label="Filtrar por tipo"
+        >
+          <option value="">Todos los tipos</option>
+          <option value="SERVICIO">Servicio</option>
+          <option value="INVESTIGACION">Investigación</option>
+        </select>
         <div className="spacer"></div>
         <input
           type="file"
@@ -257,7 +272,9 @@ export function PropuestasPage() {
                 <td colSpan={7} className="empty-message">
                   {qAplicada
                     ? `Sin resultados para «${qAplicada}»`
-                    : 'No hay propuestas cargadas. Importá el archivo de solicitudes (XLSX) para crearlas.'}
+                    : tipo
+                      ? 'No hay propuestas de ese tipo en la convocatoria.'
+                      : 'No hay propuestas cargadas. Importá el archivo de solicitudes (XLSX) para crearlas.'}
                 </td>
               </tr>
             ) : (

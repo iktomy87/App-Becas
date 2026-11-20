@@ -202,3 +202,123 @@ describe('AsignacionEngineService.removerAsignacion', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+interface RankingEntryMock {
+  padronId: string;
+  propuestaIds: string[]; // en orden de preferencia
+}
+
+/**
+ * Tests de `ejecutar`. Además de la asignación por preferencias, cubren el
+ * reinicio de cupos: sin él, re-ejecutar la corrida consumiría de nuevo
+ * vacantes ya usadas y cada vez asignaría menos gente.
+ */
+function buildEjecutarMocks(config: {
+  ranking: RankingEntryMock[];
+  cupos: Record<string, number>;
+}) {
+  const cupos = { ...config.cupos };
+  const rawCalls: Array<{ query: string; values: unknown[] }> = [];
+  const creados: any[] = [];
+
+  const tx = {
+    propuesta: {
+      findUnique: async ({ where }: any) =>
+        where.id in cupos
+          ? { id: where.id, vacantesDisponibles: cupos[where.id] }
+          : null,
+      update: async ({ where, data }: any) => {
+        const d = data.vacantesDisponibles ?? {};
+        if (d.decrement) cupos[where.id] -= d.decrement;
+        if (d.increment) cupos[where.id] += d.increment;
+        return { id: where.id, vacantesDisponibles: cupos[where.id] };
+      },
+    },
+  };
+
+  const ranking = config.ranking.map((entrada, i) => ({
+    posicion: i + 1,
+    padron: {
+      id: entrada.padronId,
+      postulaciones: entrada.propuestaIds.map((propuestaId, idx) => ({
+        propuestaId,
+        ordenPreferencia: idx + 1,
+        propuesta: { id: propuestaId },
+      })),
+    },
+  }));
+
+  const prisma = {
+    corridaAsignacion: {
+      updateMany: async () => ({ count: 1 }),
+      create: async () => ({ id: 'corrida-nueva' }),
+      update: async () => ({ id: 'corrida-nueva' }),
+    },
+    resultadoRanking: { findMany: async () => ranking },
+    resultadoAsignacion: {
+      create: async ({ data }: any) => {
+        creados.push(data);
+        return data;
+      },
+    },
+    convocatoria: { update: async () => ({ id: 'conv1' }) },
+    $executeRaw: async (
+      strings: TemplateStringsArray,
+      ...values: unknown[]
+    ) => {
+      rawCalls.push({ query: strings.join('?'), values });
+      return 0;
+    },
+    $transaction: async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx),
+  };
+
+  const events = { emit: jest.fn() };
+  const service = new AsignacionEngineService(prisma as any, events as any);
+
+  return { service, cupos, creados, rawCalls, events };
+}
+
+describe('AsignacionEngineService.ejecutar', () => {
+  it('reinicia las vacantes a los totales antes de asignar (re-ejecución idempotente)', async () => {
+    const { service, rawCalls } = buildEjecutarMocks({
+      ranking: [{ padronId: 'p1', propuestaIds: ['area1'] }],
+      cupos: { area1: 0 },
+    });
+
+    await service.ejecutar('conv1');
+
+    expect(rawCalls).toHaveLength(1);
+    expect(rawCalls[0].values).toContain('conv1');
+    expect(rawCalls[0].query).toMatch(
+      /vacantes_disponibles\s*=\s*vacantes_total/,
+    );
+  });
+
+  it('asigna a la primera preferencia con cupo y marca NO_ASIGNADO al resto', async () => {
+    const { service, cupos, creados } = buildEjecutarMocks({
+      ranking: [
+        { padronId: 'p1', propuestaIds: ['area1', 'area2'] },
+        { padronId: 'p2', propuestaIds: ['area1'] },
+      ],
+      cupos: { area1: 1, area2: 0 },
+    });
+
+    const res = await service.ejecutar('conv1');
+
+    expect(res).toEqual({
+      corridaId: 'corrida-nueva',
+      asignados: 1,
+      noAsignados: 1,
+    });
+    expect(cupos.area1).toBe(0);
+    expect(creados[0]).toMatchObject({
+      padronId: 'p1',
+      propuestaId: 'area1',
+      estado: 'ASIGNADO',
+    });
+    expect(creados[1]).toMatchObject({
+      padronId: 'p2',
+      estado: 'NO_ASIGNADO',
+    });
+  });
+});

@@ -1,5 +1,5 @@
 import { http } from './http';
-import type { Propuesta, PropuestasPage } from './types';
+import type { Propuesta, PropuestasPage, TipoPropuesta } from './types';
 
 export interface CreatePropuestaDto {
   idExterno:         string;
@@ -23,14 +23,21 @@ export interface CreatePropuestaDto {
 }
 
 export const propuestasService = {
-  /** GET /propuestas?convocatoriaId=&page=&limit=&q= (paginado + búsqueda) */
-  listar: (convocatoriaId: string, page = 1, limit = 50, q?: string) => {
+  /** GET /propuestas?convocatoriaId=&page=&limit=&q=&tipo= (paginado + filtros) */
+  listar: (
+    convocatoriaId: string,
+    page = 1,
+    limit = 50,
+    q?: string,
+    tipo?: TipoPropuesta,
+  ) => {
     const params = new URLSearchParams({
       convocatoriaId,
       page: String(page),
       limit: String(limit),
     });
     if (q) params.set('q', q);
+    if (tipo) params.set('tipo', tipo);
     return http.get<PropuestasPage>(`/propuestas?${params}`);
   },
 

@@ -89,11 +89,6 @@ export class RankingService {
       });
       if (!padron) continue;
 
-      const habilitacion = this.strategy.verificarHabilitacion(padron, {
-        minMateriasCursando: config.minMateriasCursando,
-        minRegularizadas: config.minRegularizadas,
-      });
-
       // Fallback: sin archivo de orden de mérito no hay `Mat. de la carrera`,
       // así que el total del plan sale del catálogo de especialidades. Se avisa
       // una sola vez si algún código no está, porque el resultado depende de
@@ -106,6 +101,19 @@ export class RankingService {
           `Especialidad ${padron.especialidadCodigo} fuera del catálogo: se asume un plan de ${MATERIAS_PLAN_POR_DEFECTO} materias. Conviene cargar el orden de mérito, que trae "Mat. de la carrera".`,
         );
       }
+      // El plan se resuelve ANTES de la habilitación: el mismo total que divide
+      // el término de avance define cuánto le queda por cursar al estudiante, y
+      // esa cuenta decide la excepción de `cursando` (ver el strategy).
+      const plan = totalMateriasPlan ?? MATERIAS_PLAN_POR_DEFECTO;
+
+      const habilitacion = this.strategy.verificarHabilitacion(
+        padron,
+        {
+          minMateriasCursando: config.minMateriasCursando,
+          minRegularizadas: config.minRegularizadas,
+        },
+        plan,
+      );
 
       const desglose = habilitacion.habilitado
         ? this.strategy.calcularPuntaje({
@@ -115,7 +123,7 @@ export class RankingService {
             // se usa `Cursando año actual` del padrón como equivalente más cercano.
             cursadas: padron.cursando,
             aplazos: padron.aplazos,
-            totalMateriasPlan: totalMateriasPlan ?? MATERIAS_PLAN_POR_DEFECTO,
+            totalMateriasPlan: plan,
             // El padrón no trae antecedentes; el bonus sólo aplica si se
             // importó el archivo de orden de mérito.
             bonusAntecedentes: 0,
