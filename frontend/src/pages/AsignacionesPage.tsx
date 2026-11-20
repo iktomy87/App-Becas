@@ -37,6 +37,7 @@ export function AsignacionesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ejecutando, setEjecutando] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   // Sin corrida vigente no hay nada que mostrar (sí se puede ejecutar).
   const [sinCorrida, setSinCorrida] = useState(false);
   // Se incrementa tras ejecutar la asignación para forzar la recarga de ambas
@@ -203,8 +204,18 @@ export function AsignacionesPage() {
     }
   };
 
-  const descargar = () => {
-    if (convocatoria) asignacionService.descargarReporte(convocatoria.id);
+  const descargar = async () => {
+    if (!convocatoria) return;
+    setDescargando(true);
+    try {
+      await asignacionService.descargarReporte(convocatoria.id);
+    } catch (err) {
+      const mensaje =
+        err instanceof Error && err.message ? err.message : 'falló';
+      alert(`Error al descargar el reporte: ${mensaje}`);
+    } finally {
+      setDescargando(false);
+    }
   };
 
   // Quitar a un asignado de su área: el backend libera la vacante e intenta
@@ -342,10 +353,10 @@ export function AsignacionesPage() {
         <button
           className="btn outline"
           onClick={descargar}
-          disabled={!convocatoria || sinCorrida}
+          disabled={!convocatoria || sinCorrida || descargando}
         >
           <span className="ic">⭳</span>
-          Descargar Excel
+          {descargando ? 'Descargando...' : 'Descargar Excel'}
         </button>
       </div>
 

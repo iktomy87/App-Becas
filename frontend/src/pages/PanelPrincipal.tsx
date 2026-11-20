@@ -38,12 +38,6 @@ const BADGE_LABEL: Record<string, string> = {
   ASIGNADA:   'Asignada',
 };
 
-// ── Handler de módulo (sin estado) ────────────────────────────────────────────
-
-function handleVerFicha(row: RankingRow) {
-  console.warn('Ver ficha — pendiente de implementación', row.nombre);
-}
-
 // ── Resumen de errores de la carga (RF-07) ───────────────────────────────────
 
 /**
@@ -336,7 +330,6 @@ export function PanelPrincipal() {
             <RankingTable
               rows={ranking.map(toRankingRow)}
               emptyRows={Math.max(0, 3 - ranking.length)}
-              onVerFicha={handleVerFicha}
             />
           )}
         </div>

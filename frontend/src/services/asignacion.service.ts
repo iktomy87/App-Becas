@@ -58,11 +58,26 @@ export const asignacionService = {
     ),
 
   /** GET /convocatorias/:convocatoriaId/reportes/asignacion  → descarga Excel */
-  descargarReporte: (convocatoriaId: string) => {
-    window.open(
+  descargarReporte: async (convocatoriaId: string) => {
+    const res = await fetch(
       `${API_BASE_URL}/convocatorias/${convocatoriaId}/reportes/asignacion`,
-      '_blank',
     );
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(
+        body?.message ?? `No se pudo generar el reporte (${res.status})`,
+      );
+    }
+
+    const blob = await res.blob();
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = 'reporte_asignacion.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
   },
 };
 

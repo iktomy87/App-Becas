@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { nombreEspecialidad } from '../especialidades/especialidades';
 import { normalizarLegajo } from '../padron/resolver-datos';
@@ -86,7 +86,7 @@ export class ReportesService {
     private readonly storageService: StorageService,
   ) {}
 
-  async generarReporteAsignacion(convocatoriaId: string): Promise<string> {
+  async generarReporteAsignacion(convocatoriaId: string): Promise<Buffer> {
     const corrida = await this.prisma.corridaAsignacion.findFirst({
       where: { convocatoriaId, vigente: true },
       include: {
@@ -101,7 +101,7 @@ export class ReportesService {
     });
 
     if (!corrida)
-      throw new Error(
+      throw new NotFoundException(
         'No hay corrida de asignación vigente para esta convocatoria',
       );
 
@@ -158,16 +158,13 @@ export class ReportesService {
 
     const fileName = `reporte_asignacion_${convocatoriaId}_${Date.now()}.xlsx`;
     const path = `reportes/${convocatoriaId}/${fileName}`;
-    const buffer = await workbook.xlsx.writeBuffer();
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
     await this.storageService.uploadBuffer(
       path,
-      Buffer.from(buffer),
+      buffer,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
 
-    return this.storageService.createSignedDownloadUrl(
-      path,
-      'reporte_asignacion.xlsx',
-    );
+    return buffer;
   }
 }

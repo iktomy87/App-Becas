@@ -19,10 +19,9 @@ export type RankingRow = {
 interface RankingTableProps {
   rows: RankingRow[];
   emptyRows?: number;          // filas vacías de relleno
-  onVerFicha?: (row: RankingRow) => void;
 }
 
-export function RankingTable({ rows, emptyRows = 2, onVerFicha }: RankingTableProps) {
+export function RankingTable({ rows, emptyRows = 2 }: RankingTableProps) {
   return (
     <table className="ranking-table">
       <thead>
@@ -54,21 +53,13 @@ export function RankingTable({ rows, emptyRows = 2, onVerFicha }: RankingTablePr
             <td className="factor-val">{row.factor}</td>
 
             <td>
-              <div className="prio-row">
-                <div className="prio-list">
-                  {row.prioridades.map((p) => (
-                    <span key={p.orden}>
-                      {p.orden}° - {p.propuestaId}
-                      <br />
-                    </span>
-                  ))}
-                </div>
-                <button
-                  className="btn-mini"
-                  onClick={() => onVerFicha?.(row)}
-                >
-                  Ver ficha
-                </button>
+              <div className="prio-list">
+                {row.prioridades.map((p) => (
+                  <span key={p.orden}>
+                    {p.orden}° - {p.propuestaId}
+                    <br />
+                  </span>
+                ))}
               </div>
             </td>
           </tr>

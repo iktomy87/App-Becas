@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { importacionService } from '../services/importacion.service';
 import { convocatoriasService } from '../services/convocatorias.service';
 import { especialidadesService } from '../services/especialidades.service';
@@ -20,6 +20,9 @@ export function InscripcionesPage() {
   const [convocatoria, setConvocatoria] = useState<Convocatoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [cargandoArchivo, setCargandoArchivo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolver la convocatoria activa con la misma regla que usan el panel y `/ranking`
   useEffect(() => {
@@ -103,9 +106,59 @@ export function InscripcionesPage() {
     }
     void cargar();
     return () => { cancelled = true; };
-  }, [convocatoria, page, qAplicada, carrera]);
+  }, [convocatoria, page, qAplicada, carrera, revision]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  async function subirInscripciones(file: File) {
+    setCargandoArchivo(true);
+    setError(null);
+    try {
+      let target = convocatoria;
+      if (!target) {
+        const now = new Date();
+        const cierre = new Date(now);
+        cierre.setMonth(cierre.getMonth() + 1);
+        target = await convocatoriasService.crear({
+          nombre: `Convocatoria ${now.getFullYear()}`,
+          fechaApertura: now.toISOString(),
+          fechaCierre: cierre.toISOString(),
+        });
+        setConvocatoria(target);
+      }
+
+      const { jobId } = await importacionService.cargar(target.id, file);
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const status = await importacionService.status(target.id, jobId);
+        if (status.state === 'completed') {
+          if (!status.resultado) {
+            throw new Error('La carga terminó sin devolver resultado');
+          }
+          alert(
+            `Se guardaron ${status.resultado.filasValidas} inscripciones.` +
+              (status.resultado.filasError > 0
+                ? ` ${status.resultado.filasError} filas fueron descartadas.`
+                : ''),
+          );
+          setPage(1);
+          setRevision((r) => r + 1);
+          break;
+        }
+        if (status.state === 'failed') {
+          throw new Error(status.error || 'La carga de inscripciones falló');
+        }
+      }
+    } catch (err) {
+      alert(
+        `Error al cargar inscripciones: ${
+          err instanceof Error ? err.message : 'No se pudo cargar el archivo'
+        }`,
+      );
+    } finally {
+      setCargandoArchivo(false);
+    }
+  }
 
 
   if (loading) {
@@ -130,7 +183,7 @@ export function InscripcionesPage() {
         {/* Table skeleton */}
         <div className="sk-table-wrap">
           <div className="sk-table-head">
-            {[120, 80, 70, 70, 70, 70, 90, 70].map((w, i) => (
+            {[120, 80, 70, 70, 70, 70, 90].map((w, i) => (
               <div key={i} className="sk" style={{ width: w, height: 11, borderRadius: 3 }} />
             ))}
           </div>
@@ -170,6 +223,25 @@ export function InscripcionesPage() {
       {/* Encabezado */}
       <div className="page-head">
         <h1 className="page-title">Inscripciones</h1>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void subirInscripciones(file);
+            e.target.value = '';
+          }}
+        />
+        <button
+          className="btn solid"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={cargandoArchivo}
+        >
+          <span className="ic">⭱</span>
+          {cargandoArchivo ? 'Cargando...' : 'Cargar inscripciones'}
+        </button>
       </div>
 
       {/* Convocatoria activa */}
@@ -215,10 +287,6 @@ export function InscripcionesPage() {
             </option>
           ))}
         </select>
-        <div className="spacer"></div>
-        <select className="select-like columns-select">
-          <option>Columnas</option>
-        </select>
       </div>
 
       {/* Tabla de Datos */}
@@ -233,13 +301,12 @@ export function InscripcionesPage() {
               <th>Aprobadas</th>
               <th>Aplazos</th>
               <th>Prioridades</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
             {inscripciones.length === 0 ? (
               <tr>
-                <td colSpan={8} className="empty-message">
+                <td colSpan={7} className="empty-message">
                   {qAplicada
                     ? `Sin resultados para «${qAplicada}»`
                     : carrera
@@ -274,9 +341,6 @@ export function InscripcionesPage() {
                         </div>
                       ))}
                     </div>
-                  </td>
-                  <td className="actions-cell">
-                    <button className="ver-ficha">Ver ficha</button>
                   </td>
                 </tr>
               ))

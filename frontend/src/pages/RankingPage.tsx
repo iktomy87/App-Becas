@@ -233,11 +233,6 @@ export function RankingPage() {
             </option>
           ))}
         </select>
-        <div className="spacer"></div>
-        <div className="select-like columns-select">
-          Columnas
-          <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
-        </div>
       </div>
 
       <div className="table-wrap">
@@ -252,13 +247,12 @@ export function RankingPage() {
               <th>Cursadas</th>
               <th>Aprobadas</th>
               <th>Aplazos</th>
-              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {resultados.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '30px' }}>
                   {qAplicada
                     ? `Sin resultados para «${qAplicada}»`
                     : carrera
@@ -288,9 +282,6 @@ export function RankingPage() {
                   <td>{r.padron?.regularizadas}</td>
                   <td>{r.padron?.aprobadas}</td>
                   <td>{r.padron?.aplazos}</td>
-                  <td>
-                    <button className="ver-ficha">Ver ficha</button>
-                  </td>
                 </tr>
               ))
             )}
