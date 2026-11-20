@@ -5,9 +5,16 @@ import {
   Param,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { tmpdir } from 'os';
+import { existsSync, unlinkSync } from 'fs';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstadoConvocatoria } from '@prisma/client';
 import { ImportacionService } from './importacion.service';
@@ -40,23 +47,42 @@ export class ImportacionController {
   }
 
   @Post(['planilla', 'planillas'])
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: tmpdir(),
+        filename: (_req, file, cb) =>
+          cb(
+            null,
+            `${Date.now()}-${Math.random().toString(36).slice(2)}${extname(file.originalname)}`,
+          ),
+      }),
+    }),
+  )
   async subirPlanilla(
     @Param('convocatoriaId') convocatoriaId: string,
-    @Body() body: { path: string; originalname: string },
+    @UploadedFile() file: Express.Multer.File,
   ) {
     await this.validarConvocatoriaAbierta(convocatoriaId);
-    if (!body?.path || !body?.originalname) {
-      throw new BadRequestException('Faltan path u originalname del archivo');
+    if (!file) throw new BadRequestException('Falta el archivo');
+
+    const path = this.storageService.createObjectPath(
+      `planillas/${convocatoriaId}`,
+      file.originalname,
+    );
+    try {
+      await this.storageService.uploadFile(path, file.path);
+    } finally {
+      if (existsSync(file.path)) unlinkSync(file.path);
     }
-    this.storageService.assertPath(body.path, `planillas/${convocatoriaId}`);
 
     const job = await this.queueService.enqueue(
       IMPORTACION_QUEUE,
       'cargar-planilla',
       {
         convocatoriaId,
-        filePath: body.path,
-        originalname: body.originalname,
+        filePath: path,
+        originalname: file.originalname,
       } satisfies JobCargarPlanilla,
     );
 

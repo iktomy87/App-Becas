@@ -130,59 +130,6 @@ function uploadWithProgress<T>(
   });
 }
 
-function uploadToUrl(
-  url: string,
-  file: File,
-  options?: { inactivityTimeoutMs?: number; onProgress?: (pct: number) => void },
-): Promise<void> {
-  const inactivityTimeoutMs = options?.inactivityTimeoutMs ?? 200_000;
-  const onProgress = options?.onProgress;
-
-  return new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    let timer: ReturnType<typeof setTimeout>;
-
-    const reset = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        xhr.abort();
-        reject(
-          new Error(
-            `La subida se detuvo (sin progreso por ${inactivityTimeoutMs / 1000}s). Verificá tu conexión.`,
-          ),
-        );
-      }, inactivityTimeoutMs);
-    };
-
-    xhr.upload.addEventListener('progress', (e) => {
-      reset();
-      if (e.lengthComputable && onProgress) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    });
-    xhr.upload.addEventListener('loadend', () => clearTimeout(timer));
-    xhr.addEventListener('load', () => {
-      clearTimeout(timer);
-      if (xhr.status >= 400) {
-        let body: unknown;
-        try { body = JSON.parse(xhr.responseText); } catch { body = xhr.responseText; }
-        reject(new ApiError(xhr.status, body));
-        return;
-      }
-      resolve();
-    });
-    xhr.addEventListener('error', () => {
-      clearTimeout(timer);
-      reject(new Error('Error de red al subir el archivo a Storage.'));
-    });
-
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', 'text/plain');
-    reset();
-    xhr.send(file);
-  });
-}
-
 export const http = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
@@ -197,10 +144,4 @@ export const http = {
    */
   upload: <T>(path: string, formData: FormData, onProgress?: (pct: number) => void) =>
     uploadWithProgress<T>(path, formData, { inactivityTimeoutMs: 200_000, onProgress }),
-
-  uploadToUrl: (
-    url: string,
-    file: File,
-    onProgress?: (pct: number) => void,
-  ) => uploadToUrl(url, file, { onProgress }),
 };

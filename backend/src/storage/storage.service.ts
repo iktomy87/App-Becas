@@ -5,9 +5,14 @@ import {
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
-import { mkdirSync, createWriteStream, existsSync } from 'fs';
+import {
+  mkdirSync,
+  createWriteStream,
+  createReadStream,
+  existsSync,
+} from 'fs';
 import { randomUUID } from 'crypto';
-import { join } from 'path';
+import { extname, join } from 'path';
 import { tmpdir } from 'os';
 import { Readable } from 'stream';
 import type { ReadableStream as NodeReadableStream } from 'stream/web';
@@ -34,11 +39,7 @@ export class StorageService implements OnModuleInit {
     }
   }
 
-  async createSignedUploadUrl(
-    scope: string,
-    originalname: string,
-  ): Promise<SignedUpload> {
-    this.assertConfigured();
+  createObjectPath(scope: string, originalname: string): string {
     const safeScope = scope.replace(/^\/+|\/+$/g, '');
     const safeName = originalname
       .split(/[\\/]/)
@@ -47,7 +48,37 @@ export class StorageService implements OnModuleInit {
     const ext = safeName.includes('.')
       ? safeName.slice(safeName.lastIndexOf('.'))
       : '';
-    const path = `${safeScope}/${Date.now()}-${randomUUID()}${ext}`;
+    return `${safeScope}/${Date.now()}-${randomUUID()}${ext}`;
+  }
+
+  async uploadFile(path: string, sourcePath: string): Promise<void> {
+    this.assertConfigured();
+    const stream = createReadStream(sourcePath);
+    const res = await fetch(
+      `${this.url}/storage/v1/object/${this.bucket}/${this.encodePath(path)}`,
+      {
+        method: 'PUT',
+        headers: this.headers({
+          'content-type': this.contentTypeFor(path),
+          'x-upsert': 'true',
+        }),
+        body: Readable.toWeb(stream) as unknown as BodyInit,
+        duplex: 'half',
+      } as RequestInit,
+    );
+    if (!res.ok) {
+      throw new Error(
+        `No se pudo subir ${path} a Storage (${res.status}): ${await res.text()}`,
+      );
+    }
+  }
+
+  async createSignedUploadUrl(
+    scope: string,
+    originalname: string,
+  ): Promise<SignedUpload> {
+    this.assertConfigured();
+    const path = this.createObjectPath(scope, originalname);
 
     const res = await fetch(
       `${this.url}/storage/v1/object/upload/sign/${this.bucket}/${this.encodePath(path)}`,
@@ -178,5 +209,18 @@ export class StorageService implements OnModuleInit {
 
   private encodePath(path: string): string {
     return path.split('/').map(encodeURIComponent).join('/');
+  }
+
+  private contentTypeFor(path: string): string {
+    switch (extname(path).toLowerCase()) {
+      case '.xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case '.xls':
+        return 'application/vnd.ms-excel';
+      case '.csv':
+        return 'text/csv';
+      default:
+        return 'application/octet-stream';
+    }
   }
 }

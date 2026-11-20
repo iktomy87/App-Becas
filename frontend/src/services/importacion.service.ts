@@ -7,22 +7,13 @@ import type {
   ResultadoImportacionPlanilla,
 } from './types';
 
-interface SignedUpload {
-  path: string;
-  signedUrl: string;
-  token: string;
-}
-
 export const importacionService = {
   cargar: async (convocatoriaId: string, file: File) => {
-    const ticket = await http.post<SignedUpload>(
-      `/convocatorias/${convocatoriaId}/planillas/upload-url`,
-      { filename: file.name },
-    );
-    await http.uploadToUrl(ticket.signedUrl, file);
-    return http.post<{ jobId: string }>(
+    const formData = new FormData();
+    formData.append('file', file);
+    return http.upload<{ jobId: string }>(
       `/convocatorias/${convocatoriaId}/planillas`,
-      { path: ticket.path, originalname: file.name },
+      formData,
     );
   },
 
@@ -32,14 +23,11 @@ export const importacionService = {
     ),
 
   cargarPadron: async (convocatoriaId: string, file: File) => {
-    const ticket = await http.post<SignedUpload>(
-      `/convocatorias/${convocatoriaId}/padron/upload-url`,
-      { filename: file.name },
-    );
-    await http.uploadToUrl(ticket.signedUrl, file);
-    return http.post<{ jobId: string; mensaje: string }>(
+    const formData = new FormData();
+    formData.append('file', file);
+    return http.upload<{ jobId: string; mensaje: string }>(
       `/convocatorias/${convocatoriaId}/padron`,
-      { path: ticket.path, originalname: file.name },
+      formData,
     );
   },
 

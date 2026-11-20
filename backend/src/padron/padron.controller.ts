@@ -6,7 +6,14 @@ import {
   NotFoundException,
   Param,
   Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { tmpdir } from 'os';
+import { existsSync, unlinkSync } from 'fs';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PADRON_QUEUE, JobCargarPadron } from './padron.processor';
 import { QueueService } from '../queue/queue.service';
@@ -40,20 +47,39 @@ export class PadronController {
     summary:
       'Cargar maestro.xlsx como padrón académico de la convocatoria (procesado en background)',
   })
-  @ApiConsumes('application/json')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: tmpdir(),
+        filename: (_req, file, cb) =>
+          cb(
+            null,
+            `${Date.now()}-${Math.random().toString(36).slice(2)}${extname(file.originalname)}`,
+          ),
+      }),
+    }),
+  )
   async cargar(
     @Param('convocatoriaId') convocatoriaId: string,
-    @Body() body: { path: string; originalname: string },
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!body?.path || !body?.originalname) {
-      throw new BadRequestException('Faltan path u originalname del archivo');
+    if (!file) throw new BadRequestException('Falta el archivo');
+
+    const path = this.storageService.createObjectPath(
+      `padrones/${convocatoriaId}`,
+      file.originalname,
+    );
+    try {
+      await this.storageService.uploadFile(path, file.path);
+    } finally {
+      if (existsSync(file.path)) unlinkSync(file.path);
     }
-    this.storageService.assertPath(body.path, `padrones/${convocatoriaId}`);
 
     const job = await this.queueService.enqueue(PADRON_QUEUE, 'cargar-padron', {
       convocatoriaId,
-      filePath: body.path,
-      originalname: body.originalname,
+      filePath: path,
+      originalname: file.originalname,
     } satisfies JobCargarPadron);
 
     return {
