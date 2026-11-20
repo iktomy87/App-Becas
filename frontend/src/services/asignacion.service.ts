@@ -2,15 +2,23 @@ import { http } from './http';
 import type {
   AsignacionPage,
   EstadoAsignacion,
+  EstadoJob,
   ResultadoAsignacion,
+  ResultadoAsignacionJob,
 } from './types';
 import { API_BASE_URL } from './config';
 
 export const asignacionService = {
   /** POST /convocatorias/:convocatoriaId/asignacion/ejecutar */
   ejecutar: (convocatoriaId: string) =>
-    http.post<{ corridaId: string; asignados: number; noAsignados: number }>(
+    http.post<{ jobId: string; mensaje?: string }>(
       `/convocatorias/${convocatoriaId}/asignacion/ejecutar`,
+    ),
+
+  /** GET /convocatorias/:convocatoriaId/asignacion/status/:jobId */
+  status: (convocatoriaId: string, jobId: string) =>
+    http.get<EstadoJob<ResultadoAsignacionJob>>(
+      `/convocatorias/${convocatoriaId}/asignacion/status/${jobId}`,
     ),
 
   /**

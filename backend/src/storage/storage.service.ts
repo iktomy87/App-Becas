@@ -5,12 +5,7 @@ import {
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
-import {
-  mkdirSync,
-  createWriteStream,
-  createReadStream,
-  existsSync,
-} from 'fs';
+import { mkdirSync, createWriteStream, createReadStream, existsSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { extname, join } from 'path';
 import { tmpdir } from 'os';

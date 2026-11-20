@@ -177,11 +177,11 @@ export interface ProgresoImportacion {
 }
 
 /**
- * Estado de un job de BullMQ, según lo devuelven los endpoints de estado
+ * Estado de un job de la cola Postgres, según lo devuelven los endpoints de estado
  * (`planilla/status/:jobId` y `padron/status/:jobId`).
  *
  * `progress` es `ProgresoImportacion` en los jobs que llaman a
- * `updateProgress`, y el `0` por defecto de BullMQ en los que no.
+ * `updateProgress`, y el `0` por defecto en los que no.
  */
 export interface EstadoJob<T> {
   state: string;
@@ -276,6 +276,12 @@ export interface AsignacionResumen {
   totalAsignados:    number;
   totalNoAsignados:  number;
   vigente:           boolean;
+}
+
+export interface ResultadoAsignacionJob {
+  corridaId:   string;
+  asignados:   number;
+  noAsignados: number;
 }
 
 export interface AsignacionPage {

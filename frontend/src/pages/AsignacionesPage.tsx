@@ -166,19 +166,34 @@ export function AsignacionesPage() {
     if (!convocatoria) return;
     if (
       !confirm(
-        '¿Ejecutar la asignación? Se invalida la corrida anterior y se vuelve a asignar a todos los postulantes.',
+        '¿Ejecutar la asignación? Se invalida la corrida anterior y se vuelve a asignar a todos los postulantes. El proceso se ejecuta en segundo plano.',
       )
     )
       return;
     setEjecutando(true);
     try {
-      const res = await asignacionService.ejecutar(convocatoria.id);
-      alert(
-        `Asignación ejecutada: ${res.asignados} asignados, ${res.noAsignados} no asignados.`,
-      );
-      setPageAsig(1);
-      setPageNoAsig(1);
-      setRevision((r) => r + 1);
+      const { jobId } = await asignacionService.ejecutar(convocatoria.id);
+
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const status = await asignacionService.status(convocatoria.id, jobId);
+
+        if (status.state === 'completed') {
+          if (!status.resultado) {
+            throw new Error('La asignación terminó sin devolver resultado');
+          }
+          alert(
+            `Asignación ejecutada: ${status.resultado.asignados} asignados, ${status.resultado.noAsignados} no asignados.`,
+          );
+          setPageAsig(1);
+          setPageNoAsig(1);
+          setRevision((r) => r + 1);
+          break;
+        }
+        if (status.state === 'failed') {
+          throw new Error(status.error || 'La asignación falló');
+        }
+      }
     } catch (err) {
       const mensaje =
         err instanceof Error && err.message ? err.message : 'falló';

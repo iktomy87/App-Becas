@@ -5,6 +5,7 @@ import { QueueModule } from './queue/queue.module';
 import { StorageModule } from './storage/storage.module';
 import { ImportacionWorkerModule } from './importacion/importacion-worker.module';
 import { PadronWorkerModule } from './padron/padron-worker.module';
+import { AsignacionWorkerModule } from './asignacion/asignacion-worker.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PadronWorkerModule } from './padron/padron-worker.module';
     StorageModule,
     ImportacionWorkerModule,
     PadronWorkerModule,
+    AsignacionWorkerModule,
   ],
 })
 export class WorkerRootModule {}

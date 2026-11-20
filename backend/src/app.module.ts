@@ -33,7 +33,7 @@ import { AppController } from './app.controller';
     ReportesModule,
     EspecialidadesModule,
   ],
-  controllers: [AppController],   
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
