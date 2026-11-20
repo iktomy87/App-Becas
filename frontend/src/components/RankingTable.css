@@ -73,6 +73,12 @@
 }
 
 /* ─── Botón mini (Ver ficha) ─────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .ranking-table {
+    min-width: 760px;
+  }
+}
+
 .btn-mini {
   display: inline-flex;
   align-items: center;

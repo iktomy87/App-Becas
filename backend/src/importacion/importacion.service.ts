@@ -455,7 +455,7 @@ export class ImportacionService {
           ? leerEntero(raw['Numero de Aplazos'])
           : raw['Aplazos'] != null
             ? leerEntero(raw['Aplazos'])
-            : undefined,
+            : 0,
       preferencias,
     };
 

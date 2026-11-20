@@ -141,6 +141,38 @@ describe('procesarFila', () => {
     }
   });
 
+  it('lee "Numero de Aplazos" del formato inscripciones_completada', () => {
+    const s = servicio();
+    const { ctx } = ctxHarness();
+    const porEstudiante = new Map();
+
+    s.procesarFila(
+      { ...fila('44154651'), 'Numero de Aplazos': '0' },
+      2,
+      porEstudiante,
+      ctx,
+    );
+    s.procesarFila(
+      { ...fila('42741646'), 'Numero de Aplazos': '10' },
+      4,
+      porEstudiante,
+      ctx,
+    );
+
+    expect(porEstudiante.get('44154651').fila.aplazos).toBe(0);
+    expect(porEstudiante.get('42741646').fila.aplazos).toBe(10);
+  });
+
+  it('deja aplazos en 0 cuando la planilla no trae la columna', () => {
+    const s = servicio();
+    const { ctx } = ctxHarness();
+    const porEstudiante = new Map();
+
+    s.procesarFila(fila('46385979'), 3, porEstudiante, ctx);
+
+    expect(porEstudiante.get('46385979').fila.aplazos).toBe(0);
+  });
+
   it('una fila con preferencia ilegible NO se descarta si tiene otra legible', () => {
     const s = servicio();
     const { c, ctx } = ctxHarness();

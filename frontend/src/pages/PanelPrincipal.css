@@ -7,7 +7,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 20px;
+}
+
+.page-head > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .page-title {
@@ -27,6 +35,7 @@
   border-radius: 20px;
   cursor: pointer;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .btn .ic {
@@ -90,6 +99,13 @@
 .col-side {
   width: 300px;
   flex-shrink: 0;
+}
+
+.table-scroll,
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ─── Skeleton loading ───────────────────────────────────────────────────── */
@@ -167,4 +183,51 @@
 .paginacion .btn.outline:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .content {
+    padding: 24px;
+  }
+
+  .layout {
+    flex-direction: column;
+  }
+
+  .col-main {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .col-side {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .col-side .stat-card {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .content {
+    padding: 20px 16px 40px;
+  }
+
+  .page-title {
+    font-size: 28px;
+  }
+
+  .conv-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .paginacion {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }

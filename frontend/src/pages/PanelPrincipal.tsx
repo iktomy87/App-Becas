@@ -327,10 +327,12 @@ export function PanelPrincipal() {
               No hay datos de ranking para esta convocatoria.
             </p>
           ) : (
-            <RankingTable
-              rows={ranking.map(toRankingRow)}
-              emptyRows={Math.max(0, 3 - ranking.length)}
-            />
+            <div className="table-scroll">
+              <RankingTable
+                rows={ranking.map(toRankingRow)}
+                emptyRows={Math.max(0, 3 - ranking.length)}
+              />
+            </div>
           )}
         </div>
 
