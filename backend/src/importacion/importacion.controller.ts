@@ -16,7 +16,6 @@ import { extname } from 'path';
 import { tmpdir } from 'os';
 import { existsSync, unlinkSync } from 'fs';
 import { PrismaService } from '../prisma/prisma.service';
-import { EstadoConvocatoria } from '@prisma/client';
 import { ImportacionService } from './importacion.service';
 import { IMPORTACION_QUEUE } from './importacion.constants';
 import { JobCargarPlanilla } from './importacion.processor';
@@ -37,7 +36,7 @@ export class ImportacionController {
     @Param('convocatoriaId') convocatoriaId: string,
     @Body() body: { filename: string },
   ) {
-    await this.validarConvocatoriaAbierta(convocatoriaId);
+    await this.validarConvocatoriaExiste(convocatoriaId);
     if (!body?.filename)
       throw new BadRequestException('Falta el nombre del archivo');
     return this.storageService.createSignedUploadUrl(
@@ -63,7 +62,7 @@ export class ImportacionController {
     @Param('convocatoriaId') convocatoriaId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    await this.validarConvocatoriaAbierta(convocatoriaId);
+    await this.validarConvocatoriaExiste(convocatoriaId);
     if (!file) throw new BadRequestException('Falta el archivo');
 
     const path = this.storageService.createObjectPath(
@@ -130,17 +129,12 @@ export class ImportacionController {
     return this.importacionService.getInscripciones(convocatoriaId);
   }
 
-  private async validarConvocatoriaAbierta(
+  private async validarConvocatoriaExiste(
     convocatoriaId: string,
   ): Promise<void> {
     const conv = await this.prisma.convocatoria.findUnique({
       where: { id: convocatoriaId },
     });
     if (!conv) throw new NotFoundException('Convocatoria no encontrada');
-    if (conv.estado !== EstadoConvocatoria.ABIERTA) {
-      throw new BadRequestException(
-        `No se puede cargar planilla: la convocatoria está en estado ${conv.estado} (RN-02)`,
-      );
-    }
   }
 }

@@ -1,8 +1,8 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { EstadoCorrida } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PadronService } from '../padron/padron.service';
 import { persistirAplazosDePlanilla } from '../padron/persistir-aplazos';
-import { EstadoConvocatoria } from '@prisma/client';
 import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
@@ -91,17 +91,10 @@ export class ImportacionService {
     file: ArchivoPlanilla,
     onProgress?: (rowsProcessed: number) => void,
   ): Promise<ResultadoImportacion> {
-    // RN-02: bloquear si la convocatoria no está abierta
     const conv = await this.prisma.convocatoria.findUnique({
       where: { id: convocatoriaId },
     });
-    if (!conv) throw new ConflictException('Convocatoria no encontrada');
-    if (conv.estado !== EstadoConvocatoria.ABIERTA) {
-      fs.unlinkSync(file.path);
-      throw new ConflictException(
-        `No se puede cargar planilla: la convocatoria está en estado ${conv.estado} (RN-02)`,
-      );
-    }
+    if (!conv) throw new NotFoundException('Convocatoria no encontrada');
 
     const carga = await this.prisma.cargaPlanilla.create({
       data: {
@@ -345,6 +338,10 @@ export class ImportacionService {
       this.prisma.cargaPlanilla.updateMany({
         where: { convocatoriaId, vigente: true },
         data: { vigente: false },
+      }),
+      this.prisma.corridaAsignacion.updateMany({
+        where: { convocatoriaId, vigente: true },
+        data: { estado: EstadoCorrida.INVALIDADA, vigente: false },
       }),
       this.prisma.cargaPlanilla.update({
         where: { id: carga.id },

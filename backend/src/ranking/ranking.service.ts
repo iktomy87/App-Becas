@@ -576,46 +576,38 @@ export class RankingService {
     });
     if (!conv) return;
 
+    const estadoOriginal = conv.estado;
     const antecedentesPath = (conv as any).antecedentesPath as string | null;
 
-    if (antecedentesPath && fs.existsSync(antecedentesPath)) {
-      this.logger.log(`Auto-ranking con antecedentes: ${antecedentesPath}`);
-      // Simular el objeto file que espera importarRanking
-      const fileName = antecedentesPath.split('/').pop() ?? 'antecedentes.csv';
-      const fakeFile = {
-        path: antecedentesPath,
-        originalname: fileName,
-      } as Express.Multer.File;
-      // Temporalmente no borramos el archivo (importarRanking llama unlinkSync — hacemos una copia)
-      const tempPath = antecedentesPath + '.tmp_recalc';
-      fs.copyFileSync(antecedentesPath, tempPath);
-      fakeFile.path = tempPath;
-      await this.importarRanking(convocatoriaId, fakeFile);
-      // Restaurar el path original (importarRanking borró la copia)
-      // El original sigue intacto
-    } else {
-      this.logger.log(
-        `Auto-ranking sin antecedentes para convocatoria ${convocatoriaId}`,
-      );
-      // calcularRanking requiere estado CERRADA/EN_RANKING — cambiamos temporalmente
-      const estadoOriginal = conv.estado;
-      if (estadoOriginal === 'ABIERTA') {
-        await this.prisma.convocatoria.update({
-          where: { id: convocatoriaId },
-          data: { estado: 'CERRADA' as any },
-        });
-      }
-      try {
+    await this.prisma.convocatoria.update({
+      where: { id: convocatoriaId },
+      data: { estado: EstadoConvocatoria.CERRADA },
+    });
+
+    try {
+      if (antecedentesPath && fs.existsSync(antecedentesPath)) {
+        this.logger.log(`Auto-ranking con antecedentes: ${antecedentesPath}`);
+        const fileName =
+          antecedentesPath.split('/').pop() ?? 'antecedentes.csv';
+        const fakeFile = {
+          path: antecedentesPath,
+          originalname: fileName,
+        } as Express.Multer.File;
+        const tempPath = antecedentesPath + '.tmp_recalc';
+        fs.copyFileSync(antecedentesPath, tempPath);
+        fakeFile.path = tempPath;
+        await this.importarRanking(convocatoriaId, fakeFile);
+      } else {
+        this.logger.log(
+          `Auto-ranking sin antecedentes para convocatoria ${convocatoriaId}`,
+        );
         await this.calcularRanking(convocatoriaId);
-      } finally {
-        // Si estaba ABIERTA, la devolvemos a ABIERTA (calcularRanking la pasa a EN_RANKING)
-        if (estadoOriginal === 'ABIERTA') {
-          await this.prisma.convocatoria.update({
-            where: { id: convocatoriaId },
-            data: { estado: estadoOriginal },
-          });
-        }
       }
+    } finally {
+      await this.prisma.convocatoria.update({
+        where: { id: convocatoriaId },
+        data: { estado: estadoOriginal },
+      });
     }
   }
 }
