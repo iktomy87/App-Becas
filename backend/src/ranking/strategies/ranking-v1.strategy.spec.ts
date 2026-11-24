@@ -109,7 +109,7 @@ describe('RankingV1Strategy', () => {
   describe('verificarHabilitacion', () => {
     const config = { minMateriasCursando: 3, minRegularizadas: 1 };
     // `PadronAcademico` completo no hace falta: la habilitación sólo lee
-    // `cursando`, `regularizadas` y `aprobadas`.
+    // `cursando` y `regularizadas`.
     const padron = (campos: {
       cursando: number;
       regularizadas: number;
@@ -126,7 +126,7 @@ describe('RankingV1Strategy', () => {
     });
 
     it('inhabilita al que cursa menos de 3 si todavía le quedan materias', () => {
-      // 45 - (5 + 10) = 30 por cursar → no aplica la excepción.
+      // 45 - 5 = 40 por cursar → no aplica la excepción.
       const r = strategy.verificarHabilitacion(
         padron({ cursando: 2, regularizadas: 5, aprobadas: 10 }),
         config,
@@ -137,9 +137,9 @@ describe('RankingV1Strategy', () => {
     });
 
     it('exime del mínimo de cursando a quien le quedan menos de 3 por cursar', () => {
-      // 42 - (3 + 38) = 1 por cursar → eximido aunque curse 1.
+      // 42 - 40 = 2 por cursar → eximido aunque curse 1.
       const r = strategy.verificarHabilitacion(
-        padron({ cursando: 1, regularizadas: 3, aprobadas: 38 }),
+        padron({ cursando: 1, regularizadas: 40, aprobadas: 38 }),
         config,
         42,
       );
@@ -147,18 +147,18 @@ describe('RankingV1Strategy', () => {
     });
 
     it('no exime cuando le quedan exactamente 3 por cursar', () => {
-      // 42 - (3 + 36) = 3 → el umbral es "< 3", no "<=".
+      // 42 - 39 = 3 → el umbral es "< 3", no "<=".
       const r = strategy.verificarHabilitacion(
-        padron({ cursando: 1, regularizadas: 3, aprobadas: 36 }),
+        padron({ cursando: 1, regularizadas: 39, aprobadas: 36 }),
         config,
         42,
       );
       expect(r.habilitado).toBe(false);
     });
 
-    it('sigue exigiendo el mínimo de regularizadas aunque esté eximido', () => {
+    it('sigue exigiendo el mínimo de regularizadas', () => {
       const r = strategy.verificarHabilitacion(
-        padron({ cursando: 1, regularizadas: 0, aprobadas: 44 }),
+        padron({ cursando: 3, regularizadas: 0, aprobadas: 44 }),
         config,
         45,
       );
@@ -223,21 +223,29 @@ describe('RankingV1Strategy', () => {
 });
 
 describe('cursadasDelPadron', () => {
-  it('suma regularizadas y aprobadas', () => {
-    expect(
-      cursadasDelPadron({
-        regularizadas: 3,
-        aprobadas: 43,
-      } as unknown as PadronAcademico),
-    ).toBe(46);
+  it('usa Regularizadas del maestro sin sumar Aprobadas', () => {
+    const padron = { regularizadas: 21, aprobadas: 19 };
+    expect(cursadasDelPadron(padron)).toBe(21);
   });
 
   it('trata valores faltantes como cero', () => {
-    expect(
-      cursadasDelPadron({
-        regularizadas: null,
-        aprobadas: undefined,
-      } as unknown as PadronAcademico),
-    ).toBe(0);
+    const padron = { regularizadas: null } as unknown as Pick<
+      PadronAcademico,
+      'regularizadas'
+    >;
+    expect(cursadasDelPadron(padron)).toBe(0);
+  });
+
+  it('reproduce el factor esperado de Tomas Rodríguez', () => {
+    const padron = { regularizadas: 21, aprobadas: 19 };
+    const strategy = new RankingV1Strategy();
+    const d = strategy.calcularPuntaje({
+      promedio: 6.54,
+      aprobadas: padron.aprobadas,
+      cursadas: cursadasDelPadron(padron),
+      aplazos: 7,
+      totalMateriasPlan: 42,
+    });
+    expect(d.puntajeTotal).toBeCloseTo(10.19, 2);
   });
 });

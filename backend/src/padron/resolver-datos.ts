@@ -10,13 +10,14 @@ import { PadronAcademico } from '@prisma/client';
  * concreta entre los dos archivos, no por criterio:
  *
  *  1. `Cursadas` nunca se sobreescribe con `Cursando año actual`. En la hoja de
- *     inscriptos `Cursadas = Regulares + Aprobadas`; el maestro no trae esa
- *     columna calculada, pero sí sus componentes (`Regularizadas` y
- *     `Total Aprobadas`). Si la planilla no trae la columna, se deriva del
- *     padrón sumando ambas (ver `cursadasDelPadron`). `Cursando año actual` es
- *     otra magnitud: en el orden de mérito de 2026 difieren en el 96,6% de los
- *     estudiantes (Correa: 46 cursadas contra 0 cursando). Confundirlas rompe
- *     el término de avance de la fórmula, porque `Cursadas` es su numerador.
+ *     inscriptos `Cursadas = Regulares + Aprobadas`; en el maestro ese total ya
+ *     viene en `Regularizadas` (el encabezado del archivo dice
+ *     "Mat.Regularizadas-Examenes Ap. y Desaprob."), mientras que
+ *     `Total Aprobadas` es un subconjunto: sumarlas duplica el numerador. Sin
+ *     planilla se usa `cursadasDelPadron()`, que lee sólo `Regularizadas`.
+ *     `Cursando año actual` es otra magnitud: en el orden de mérito de 2026
+ *     difieren en el 96,6% de los estudiantes (Correa: 46 cursadas contra 0
+ *     cursando). Confundirlas rompe el término de avance de la fórmula.
  *
  *  2. `Aplazos` nunca se sobreescribe, porque el maestro no tiene columna de
  *     aplazos. Antes se usaba `Cant.` —que no es un campo de domicilio, como

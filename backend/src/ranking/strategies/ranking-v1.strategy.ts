@@ -12,9 +12,9 @@ export {
 } from '../../especialidades/especialidades';
 
 export function cursadasDelPadron(
-  padron: Pick<PadronAcademico, 'regularizadas' | 'aprobadas'>,
+  padron: Pick<PadronAcademico, 'regularizadas'>,
 ): number {
-  return (Number(padron.regularizadas) || 0) + (Number(padron.aprobadas) || 0);
+  return Number(padron.regularizadas) || 0;
 }
 
 /**
@@ -26,9 +26,10 @@ export function cursadasDelPadron(
  *        + (2 / (1 + aplazos))
  *        + antecedentes
  *
- * `cursadas` = regularizadas + aprobadas (`Cursadas` en la hoja de inscriptos).
- * Sin planilla se deriva del padrón con `cursadasDelPadron()`, NO de
- * `PadronAcademico.cursando` (materias cursando este año).
+ * `cursadas` es `Cursadas` en la hoja de inscriptos (regulares + aprobadas).
+ * En el maestro ese total ya viene en `Regularizadas`; `Total Aprobadas` es un
+ * subconjunto y NO se suma de nuevo. Sin planilla se usa `cursadasDelPadron()`,
+ * nunca `PadronAcademico.cursando` (materias cursando este año).
  *
  * Penalización de aplazos es NO LINEAL: 2 si aplazos=0, 1 si aplazos=1, etc.
  */
@@ -71,12 +72,12 @@ export class RankingV1Strategy implements RankingStrategy {
     config: { minMateriasCursando: number; minRegularizadas: number },
     totalMateriasPlan: number,
   ): { habilitado: boolean; motivo?: string } {
-    // Materias cursadas = regularizadas + aprobadas. A quién le quedan menos de
-    // 3 materias por cursar no se le puede exigir que curse 3: se lo exime del
-    // mínimo de `cursando`. Es la misma excepción que el orden de mérito marca
-    // como "Le quedan menos de 3 mat por cursar" en la columna "Cursa +de2".
-    const porCursar =
-      totalMateriasPlan - (padron.regularizadas + padron.aprobadas);
+    // `Regularizadas` del maestro ya es el total de materias cursadas
+    // (regulares + aprobadas). A quién le quedan menos de 3 no se le puede
+    // exigir que curse 3: se lo exime del mínimo de `cursando`. Es la misma
+    // excepción que el orden de mérito marca como "Le quedan menos de 3 mat
+    // por cursar" en la columna "Cursa +de2".
+    const porCursar = totalMateriasPlan - padron.regularizadas;
     const eximido = totalMateriasPlan > 0 && porCursar < 3;
 
     if (padron.cursando < config.minMateriasCursando && !eximido) {

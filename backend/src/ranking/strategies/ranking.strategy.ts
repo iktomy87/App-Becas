@@ -27,9 +27,10 @@ export interface DatosPuntaje {
   /** Materias aprobadas (`Aprobadas`). Entra multiplicado por 0,1. */
   aprobadas: number;
   /**
-   * Materias cursadas: regularizadas + aprobadas. En la hoja de inscriptos es
-   * la columna `Cursadas` (=SUM(Regulares, Aprobadas)) y es el numerador del
-   * término de avance. Sin planilla se deriva del padrón con
+   * Materias cursadas: en la hoja de inscriptos es `Cursadas`
+   * (=SUM(Regulares, Aprobadas)) y es el numerador del término de avance. En el
+   * maestro ese total ya viene en `Regularizadas`; `Aprobadas` es un
+   * subconjunto y no se suma de nuevo. Sin planilla se usa
    * `cursadasDelPadron()`.
    *
    * NO confundir con `PadronAcademico.cursando` (cursando año actual).
@@ -48,7 +49,7 @@ export interface RankingStrategy {
   /**
    * `totalMateriasPlan` es el denominador del término de avance y además el
    * total contra el que se mide cuánto le queda por cursar al estudiante:
-   * si `totalMateriasPlan - (regularizadas + aprobadas) < 3` se lo exime del
+   * si `totalMateriasPlan - regularizadas < 3` se lo exime del
    * mínimo de `cursando` (ver `ranking-v1.strategy.ts`).
    */
   verificarHabilitacion(
