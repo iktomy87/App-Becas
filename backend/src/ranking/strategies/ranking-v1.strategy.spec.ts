@@ -1,4 +1,5 @@
-import { RankingV1Strategy } from './ranking-v1.strategy';
+import { PadronAcademico } from '@prisma/client';
+import { cursadasDelPadron, RankingV1Strategy } from './ranking-v1.strategy';
 import { DatosPuntaje } from './ranking.strategy';
 
 describe('RankingV1Strategy', () => {
@@ -218,5 +219,25 @@ describe('RankingV1Strategy', () => {
       expect(d.terminoPromedio).toBe(0);
       expect(d.terminoAvance).toBe(0);
     });
+  });
+});
+
+describe('cursadasDelPadron', () => {
+  it('suma regularizadas y aprobadas', () => {
+    expect(
+      cursadasDelPadron({
+        regularizadas: 3,
+        aprobadas: 43,
+      } as unknown as PadronAcademico),
+    ).toBe(46);
+  });
+
+  it('trata valores faltantes como cero', () => {
+    expect(
+      cursadasDelPadron({
+        regularizadas: null,
+        aprobadas: undefined,
+      } as unknown as PadronAcademico),
+    ).toBe(0);
   });
 });

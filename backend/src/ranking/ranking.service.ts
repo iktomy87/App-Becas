@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RankingV1Strategy } from './strategies/ranking-v1.strategy';
+import {
+  cursadasDelPadron,
+  RankingV1Strategy,
+} from './strategies/ranking-v1.strategy';
 import { EstadoConvocatoria } from '@prisma/client';
 import {
   nombreEspecialidad,
@@ -34,14 +37,6 @@ export class RankingService {
       include: { rankingConfig: true },
     });
     if (!conv) throw new Error('Convocatoria no encontrada');
-    if (
-      conv.estado !== EstadoConvocatoria.CERRADA &&
-      conv.estado !== EstadoConvocatoria.EN_RANKING
-    ) {
-      throw new Error(
-        'La convocatoria debe estar CERRADA para calcular el ranking',
-      );
-    }
 
     // `resultados_ranking.ranking_config_id` es una FK obligatoria, así que sin
     // fila en `ranking_config` no existe un config "virtual": el objeto en
@@ -119,9 +114,7 @@ export class RankingService {
         ? this.strategy.calcularPuntaje({
             promedio: Number(padron.promedio),
             aprobadas: padron.aprobadas,
-            // Sin archivo de orden de mérito no hay columna `Cursadas`:
-            // se usa `Cursando año actual` del padrón como equivalente más cercano.
-            cursadas: padron.cursando,
+            cursadas: cursadasDelPadron(padron),
             aplazos: padron.aplazos,
             totalMateriasPlan: plan,
             // El padrón no trae antecedentes; el bonus sólo aplica si se
@@ -578,11 +571,6 @@ export class RankingService {
 
     const estadoOriginal = conv.estado;
     const antecedentesPath = (conv as any).antecedentesPath as string | null;
-
-    await this.prisma.convocatoria.update({
-      where: { id: convocatoriaId },
-      data: { estado: EstadoConvocatoria.CERRADA },
-    });
 
     try {
       if (antecedentesPath && fs.existsSync(antecedentesPath)) {

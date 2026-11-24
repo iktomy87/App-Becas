@@ -9,12 +9,14 @@ import { PadronAcademico } from '@prisma/client';
  * La regla tiene tres límites, y cada uno está justificado por una diferencia
  * concreta entre los dos archivos, no por criterio:
  *
- *  1. `Cursadas` nunca se sobreescribe. El maestro no tiene esa columna: tiene
- *     `Cursando año actual`, que es la materia que se cursa *este año*, no el
- *     histórico de materias cursadas. Son magnitudes distintas: en el orden de
- *     mérito de 2026 difieren en el 96,6% de los estudiantes (Correa: 46
- *     cursadas contra 0 cursando). Confundirlas rompe el término de avance de
- *     la fórmula, porque `Cursadas` es su numerador.
+ *  1. `Cursadas` nunca se sobreescribe con `Cursando año actual`. En la hoja de
+ *     inscriptos `Cursadas = Regulares + Aprobadas`; el maestro no trae esa
+ *     columna calculada, pero sí sus componentes (`Regularizadas` y
+ *     `Total Aprobadas`). Si la planilla no trae la columna, se deriva del
+ *     padrón sumando ambas (ver `cursadasDelPadron`). `Cursando año actual` es
+ *     otra magnitud: en el orden de mérito de 2026 difieren en el 96,6% de los
+ *     estudiantes (Correa: 46 cursadas contra 0 cursando). Confundirlas rompe
+ *     el término de avance de la fórmula, porque `Cursadas` es su numerador.
  *
  *  2. `Aplazos` nunca se sobreescribe, porque el maestro no tiene columna de
  *     aplazos. Antes se usaba `Cant.` —que no es un campo de domicilio, como

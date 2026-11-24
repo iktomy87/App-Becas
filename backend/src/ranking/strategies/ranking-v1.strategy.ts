@@ -11,6 +11,12 @@ export {
   materiasDelPlanPorCodigo,
 } from '../../especialidades/especialidades';
 
+export function cursadasDelPadron(
+  padron: Pick<PadronAcademico, 'regularizadas' | 'aprobadas'>,
+): number {
+  return (Number(padron.regularizadas) || 0) + (Number(padron.aprobadas) || 0);
+}
+
 /**
  * Implementación V1 de la fórmula oficial de ranking:
  *
@@ -20,8 +26,9 @@ export {
  *        + (2 / (1 + aplazos))
  *        + antecedentes
  *
- * `cursadas` es la columna `Cursadas` del archivo de orden de mérito, NO
- * `PadronAcademico.regularizadas`.
+ * `cursadas` = regularizadas + aprobadas (`Cursadas` en la hoja de inscriptos).
+ * Sin planilla se deriva del padrón con `cursadasDelPadron()`, NO de
+ * `PadronAcademico.cursando` (materias cursando este año).
  *
  * Penalización de aplazos es NO LINEAL: 2 si aplazos=0, 1 si aplazos=1, etc.
  */

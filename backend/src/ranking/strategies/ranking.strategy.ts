@@ -27,12 +27,12 @@ export interface DatosPuntaje {
   /** Materias aprobadas (`Aprobadas`). Entra multiplicado por 0,1. */
   aprobadas: number;
   /**
-   * Materias cursadas — la columna `Cursadas` del archivo de orden de mérito.
-   * Es el numerador del término de avance.
+   * Materias cursadas: regularizadas + aprobadas. En la hoja de inscriptos es
+   * la columna `Cursadas` (=SUM(Regulares, Aprobadas)) y es el numerador del
+   * término de avance. Sin planilla se deriva del padrón con
+   * `cursadasDelPadron()`.
    *
-   * OJO: NO confundir con `PadronAcademico.regularizadas` (materias
-   * regularizadas) ni con `PadronAcademico.cursando` (cursando año actual).
-   * El término de avance usa la columna `Cursadas` del archivo.
+   * NO confundir con `PadronAcademico.cursando` (cursando año actual).
    */
   cursadas: number;
   /** Materias del plan de la carrera (`Mat. de la carrera`). Es el denominador. */
