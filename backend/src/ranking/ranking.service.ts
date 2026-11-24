@@ -14,7 +14,11 @@ import {
   resolverDatosPlanillaVsPadron,
   describirCambio,
 } from '../padron/resolver-datos';
-import { persistirAplazosDePlanilla } from '../padron/persistir-aplazos';
+import {
+  datosFaltantesDelPadron,
+  persistirDatosDePlanilla,
+  DatosResueltosParaPadron,
+} from '../padron/persistir-aplazos';
 import { leerNumero, leerEntero, leerDni } from '../common/numero';
 import { whereBusquedaEstudiante } from '../common/busqueda';
 import * as ExcelJS from 'exceljs';
@@ -410,16 +414,13 @@ export class RankingService {
     const errores: string[] = [];
     const advertencias: string[] = [];
     /**
-     * `aplazos` resueltos que hay que dejar en la fila del padrón. El maestro
-     * no trae la columna (ver `COL_MAP` en `padron.service.ts`), así que antes
-     * de este bloque la fila quedaba con el `Cant.` de una importación vieja —43
-     * para el DNI 42732664, cuando el valor real es 1— o en 0, y las pantallas
-     * de inscripciones y de ranking muestran justamente ese campo.
-     *
-     * Sólo se anota lo que difiere de lo ya guardado, para no escribir las 176
-     * filas en cada importación.
+     * Datos resueltos que hay que dejar en la fila del padrón. El maestro no
+     * trae aplazos (ver `COL_MAP` en `padron.service.ts`) y a veces trae otros
+     * campos en 0, que significan "sin dato". Las pantallas leen el padrón, así
+     * que esos campos se completan con la planilla para que coincidan con el
+     * puntaje. Los valores que el maestro sí trae no se pisan.
      */
-    const aplazosResueltos: { padronId: string; aplazos: number }[] = [];
+    const datosResueltos: DatosResueltosParaPadron[] = [];
 
     // 3. Calcular el puntaje reutilizando la misma fórmula que usa calcularRanking,
     //    pero con los valores tal como vienen en el archivo (fuente de verdad).
@@ -507,19 +508,12 @@ export class RankingService {
         },
       });
       filasValidas++;
-      if (padron.aplazos !== datos.aplazos) {
-        aplazosResueltos.push({
-          padronId: padron.id,
-          aplazos: datos.aplazos,
-        });
-      }
+      const faltantes = datosFaltantesDelPadron(padron, datos);
+      if (faltantes) datosResueltos.push(faltantes);
     }
 
-    // El puntaje ya quedó guardado con los valores con prioridad de padrón; ahora
-    // se deja el `aplazos` en la fila del padrón para que las listas lo muestren
-    // sin tener que recomponer la resolución.
-    if (aplazosResueltos.length > 0) {
-      await persistirAplazosDePlanilla(this.prisma, aplazosResueltos);
+    if (datosResueltos.length > 0) {
+      await persistirDatosDePlanilla(this.prisma, datosResueltos);
     }
 
     // 4. Asignar posiciones ordenadas — igual que hace calcularRanking, pero
@@ -554,7 +548,7 @@ export class RankingService {
       filasError,
       errores,
       advertencias,
-      aplazosPersistidos: aplazosResueltos.length,
+      aplazosPersistidos: datosResueltos.length,
     };
   }
 

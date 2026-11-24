@@ -152,13 +152,10 @@ export interface ResultadoImportacionPlanilla {
   filasError: number;
   filasConAdvertencias: number;
   /**
-   * Cuántas filas del padrón quedaron con el `aplazos` que trajo la planilla.
+   * Cuántas filas del padrón quedaron completadas con datos de esta planilla.
    *
-   * El maestro no tiene columna de aplazos, así que el valor sale de la planilla
-   * y antes no quedaba persistido en ningún lado: la pantalla de inscripciones
-   * mostraba el `Cant.` de una importación vieja. Es 0 cuando el archivo no
-   * trae la columna, así que sirve para distinguir "no había dato" de "no se
-   * guardó".
+   * Incluye los campos que el maestro trae en 0 y los aplazos, que el maestro no
+   * tiene. Es 0 cuando no había nada para escribir.
    */
   aplazosPersistidos: number;
   errores: ReporteFila[];

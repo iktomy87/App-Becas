@@ -4,6 +4,7 @@ import {
   normalizarLegajo,
   describirCambio,
 } from './resolver-datos';
+import { datosFaltantesDelPadron } from './persistir-aplazos';
 
 /**
  * El padrón es la fuente autorizada: cuando el maestro y la planilla discrepan,
@@ -181,6 +182,42 @@ describe('resolverDatosPlanillaVsPadron — salvaguarda del padrón vacío', () 
       valorPlanilla: '17891',
       valorPadron: undefined,
     });
+  });
+});
+
+describe('datosFaltantesDelPadron', () => {
+  const datos = { promedio: 7.8, aprobadas: 43, cursadas: 44, aplazos: 0 };
+
+  it('completa los campos que el maestro trae en cero', () => {
+    expect(
+      datosFaltantesDelPadron(
+        padron({ promedio: 0, aprobadas: 0, regularizadas: 0, aplazos: 0 }),
+        datos,
+      ),
+    ).toEqual({
+      padronId: 'p1',
+      promedio: 7.8,
+      aprobadas: 43,
+      regularizadas: 44,
+    });
+  });
+
+  it('no pisa los datos que el maestro sí trae', () => {
+    expect(
+      datosFaltantesDelPadron(
+        padron({ promedio: 8, aprobadas: 42, regularizadas: 45, aplazos: 1 }),
+        datos,
+      ),
+    ).toEqual({ padronId: 'p1', aplazos: 0 });
+  });
+
+  it('no devuelve nada cuando no hay nada para escribir', () => {
+    expect(
+      datosFaltantesDelPadron(
+        padron({ promedio: 8, aprobadas: 43, regularizadas: 44, aplazos: 0 }),
+        datos,
+      ),
+    ).toBeNull();
   });
 });
 

@@ -1,63 +1,76 @@
 /**
- * Escribe en `padron_academico.aplazos` el valor que resolvió la planilla.
+ * Escribe en `padron_academico` los valores que resolvió la planilla.
  *
  * POR QUÉ HACE FALTA ESTO
  *
- * El maestro no tiene columna de aplazos. Antes se usaba `Cant.` para
- * preencherla, que resultó ser una segunda columna de materias aprobadas (92.8%
- * de coincidencia con `Total Aprobadas`, y nunca menor), así que la columna
- * quedó con números sin sentido: 43 aplazos para el DNI 42732664, cuando el
- * orden de mérito dice 1. Como las pantallas de inscripciones y de ranking leen
- * ese campo, el operador veía un número que además no era con el que se había
- * puntuado.
+ * Las pantallas de inscripciones y ranking leen el padrón, no la resolución en
+ * memoria. Si el maestro trae un campo en 0 —que significa "sin dato"— la fila
+ * aparece con 0 aunque la planilla tenga el valor con el que se puntuó. El caso
+ * real es el DNI 35450612: en el maestro figura como "Fernandez Alvarez Hayes,
+ * Fernando David", con promedio 0, 0 aprobadas y 0 regularizadas, mientras que
+ * en la planilla es "Alvarez hayes, Fernando", con 7,8 / 43 / 44.
  *
- * Quitar el mapeo no borra lo ya importado, y `parseRow` ahora emite
- * `aplazos: 0` explícito justamente para que una recarga del padrón no deje el
- * valor viejo congelado. Pero 0 tampoco es el dato: el valor real vive en la
- * planilla de orden de mérito, y hasta ahora no quedaba persistido en ningún
- * lado. Esta función es el único punto donde se guarda.
+ * POR QUÉ SÓLO CAMPOS VACÍOS
  *
- * POR QUÉ SÓLO `aplazos` Y NO LOS OTROS CAMPOS
- *
- * `resolverDatosPlanillaVsPadron` saca `aplazos` SIEMPRE de la planilla, así que
- * escribirlo en la fila del padrón no altera ninguna resolución futura: la
- * próxima planilla lo vuelve a sobrescribir. Con `promedio`, `aprobadas`,
- * `cursadas` y `legajo` sería distinto: el padrón gana cuando tiene dato, así
- * que guardar ahí el valor de la planilla lo convertiría en "dato del padrón"
- * para siempre, y la próxima planilla ya no podría corregirlo. Ése es el
- * sentido en el que se aplica la prioridad del padrón, y esta función no lo
- * toca.
+ * `resolverDatosPlanillaVsPadron` decide qué valor gana. Los campos que el
+ * maestro trae con valor > 0 son autoridad y no se tocan. Los que trae en 0 se
+ * completan con el valor resuelto de la planilla, para que la lista muestre lo
+ * mismo que el puntaje. `aplazos` no existe en el maestro, así que siempre se
+ * escribe desde la planilla.
  */
 
 import type { PrismaService } from '../prisma/prisma.service';
 
-/** Filas a escribir, tal como salen de la resolución de datos. */
-export interface AplazosResuelto {
+export interface DatosResueltosParaPadron {
   padronId: string;
-  aplazos: number;
+  promedio?: number;
+  aprobadas?: number;
+  regularizadas?: number;
+  aplazos?: number;
 }
 
-/** Tamaño de lote. 176 filas entran de sobra; el corte es sólo una red de seguridad. */
+type PadronParaCompletar = {
+  id: string;
+  promedio: unknown;
+  aprobadas: number;
+  regularizadas: number;
+  aplazos: number;
+};
+
+type DatosResueltos = {
+  promedio: number;
+  aprobadas: number;
+  cursadas: number;
+  aplazos: number;
+};
+
 const CHUNK = 500;
 
-/**
- * Actualiza `aplazos` de las filas indicadas.
- *
- * Va en lote con `unnest()` en vez de un `update` por fila por el mismo motivo
- * que `upsertPostulacionesBulk` en `importacion.service.ts`: son ~176 filas y un
- * `update` individual cada una duplica los viajes a la base.
- *
- * OJO CON EL ORDEN DE LAS CARGAS: `cargarMaestro` emite `aplazos: 0` —el maestro
- * no tiene la columna y `parseRow` lo pone explícito para no dejar congelado un
- * valor viejo—, así que recargar el padrón DESPUÉS de una planilla borra el
- * `aplazos` resuelto y las pantallas vuelven a mostrar 0. La secuencia correcta
- * es padrón → planilla.
- *
- * @returns cuántas filas quedaron efectivamente actualizadas.
- */
-export async function persistirAplazosDePlanilla(
+export function datosFaltantesDelPadron(
+  padron: PadronParaCompletar,
+  datos: DatosResueltos,
+): DatosResueltosParaPadron | null {
+  const resultado: DatosResueltosParaPadron = { padronId: padron.id };
+
+  if (Number(padron.promedio) === 0 && datos.promedio > 0) {
+    resultado.promedio = datos.promedio;
+  }
+  if (padron.aprobadas === 0 && datos.aprobadas > 0) {
+    resultado.aprobadas = datos.aprobadas;
+  }
+  if (padron.regularizadas === 0 && datos.cursadas > 0) {
+    resultado.regularizadas = datos.cursadas;
+  }
+  if (padron.aplazos !== datos.aplazos) {
+    resultado.aplazos = datos.aplazos;
+  }
+
+  return Object.keys(resultado).length > 1 ? resultado : null;
+}
+
+export async function persistirDatosDePlanilla(
   prisma: PrismaService,
-  filas: AplazosResuelto[],
+  filas: DatosResueltosParaPadron[],
 ): Promise<number> {
   if (filas.length === 0) return 0;
 
@@ -66,11 +79,18 @@ export async function persistirAplazosDePlanilla(
     const chunk = filas.slice(i, i + CHUNK);
     actualizadas += await prisma.$executeRaw`
       UPDATE padron_academico AS p
-      SET aplazos = d.aplazos
+      SET
+        promedio = COALESCE(d.promedio, p.promedio),
+        aprobadas = COALESCE(d.aprobadas, p.aprobadas),
+        regularizadas = COALESCE(d.regularizadas, p.regularizadas),
+        aplazos = COALESCE(d.aplazos, p.aplazos)
       FROM unnest(
         ${chunk.map((f) => f.padronId)}::text[],
-        ${chunk.map((f) => f.aplazos)}::int[]
-      ) AS d(id, aplazos)
+        ${chunk.map((f) => f.promedio ?? null)}::numeric[],
+        ${chunk.map((f) => f.aprobadas ?? null)}::int[],
+        ${chunk.map((f) => f.regularizadas ?? null)}::int[],
+        ${chunk.map((f) => f.aplazos ?? null)}::int[]
+      ) AS d(id, promedio, aprobadas, regularizadas, aplazos)
       WHERE p.id = d.id
     `;
   }

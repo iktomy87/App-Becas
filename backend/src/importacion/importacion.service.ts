@@ -2,7 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { EstadoCorrida } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PadronService } from '../padron/padron.service';
-import { persistirAplazosDePlanilla } from '../padron/persistir-aplazos';
+import {
+  datosFaltantesDelPadron,
+  persistirDatosDePlanilla,
+  DatosResueltosParaPadron,
+} from '../padron/persistir-aplazos';
 import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
@@ -24,12 +28,10 @@ export interface ResultadoImportacion {
   filasError: number;
   filasConAdvertencias: number;
   /**
-   * Cuántas filas del padrón quedaron con el `aplazos` que trajo esta planilla.
+   * Cuántas filas del padrón quedaron completadas con datos de esta planilla.
    *
-   * Es 0 siempre que el archivo no tenga columna de aplazos, y también cuando
-   * lo que llegó coincide con lo que ya estaba —no se escribe por escribir—. Si
-   * esperabas que se actualizara y vuelve 0, el archivo no trae la columna o el
-   * backend no está corriendo esta versión.
+   * Incluye los campos que el maestro trae en 0 y los aplazos, que el maestro no
+   * tiene. Es 0 cuando no había nada para escribir.
    */
   aplazosPersistidos: number;
   errores: ErrorFila[];
@@ -254,12 +256,7 @@ export class ImportacionService {
       console.log(`[importación] ${missingIds.length} propuestas creadas.`);
     }
 
-    /**
-     * `aplazos` resueltos que hay que dejar escritos en el padrón. Se anota
-     * acá y se escribe una sola vez después del loop, para no meter un `update`
-     * dentro de la iteración.
-     */
-    const aplazosResueltos: { padronId: string; aplazos: number }[] = [];
+    const datosResueltos: DatosResueltosParaPadron[] = [];
 
     for (const [dni, { fila, filas }] of porEstudiante) {
       // Se reportan todas las filas del estudiante: si llegó fusionado desde
@@ -282,18 +279,9 @@ export class ImportacionService {
       if (resultado.advertencias.length > 0 || dnisConAdvertencia.has(dni))
         filasAdvertencia++;
 
-      // El maestro no trae columna de aplazos, así que la fila del padrón los
-      // tiene en 0 (o en el `Cant.` de una importación vieja) y la pantalla de
-      // inscripciones muestra eso. El dato real viene en esta planilla y ya
-      // está resuelto en `datos` —misma regla de prioridad que el puntaje—, así
-      // que se deja escrito acá. Antes se parseaba y se descartaba: era la
-      // única razón por la que la columna "Aplazos" no cuadraba con lo que
-      // se puntúa.
-      if (padronEntry && padronEntry.aplazos !== resultado.datos.aplazos) {
-        aplazosResueltos.push({
-          padronId: padronEntry.id,
-          aplazos: resultado.datos.aplazos,
-        });
+      if (padronEntry) {
+        const faltantes = datosFaltantesDelPadron(padronEntry, resultado.datos);
+        if (faltantes) datosResueltos.push(faltantes);
       }
 
       let prefValidas = 0;
@@ -325,13 +313,9 @@ export class ImportacionService {
     // ── 3) UPSERT MASIVO con unnest() en vez de N upserts individuales ──
     await this.upsertPostulacionesBulk(filasPostulacion);
 
-    // Los aplazos van en el padrón, no en la postulación: la pantalla de
-    // inscripciones los lee de ahí. Es la misma escritura que hace
-    // `importarRanking`, y comparte sus dos salvedades —el orden de las cargas y
-    // que sólo se escribe `aplazos`, nunca los campos donde el padrón manda.
-    const aplazosPersistidos = await persistirAplazosDePlanilla(
+    const aplazosPersistidos = await persistirDatosDePlanilla(
       this.prisma,
-      aplazosResueltos,
+      datosResueltos,
     );
 
     await this.prisma.$transaction([
@@ -365,9 +349,7 @@ export class ImportacionService {
       filasError,
       filasConAdvertencias: filasAdvertencia,
       /**
-       * Cuántas filas del padrón quedaron con el `aplazos` de esta planilla. Si
-       * es 0 y esperabas que lo actualizara, o el archivo no trae la columna o
-       * el backend no está corriendo esta versión.
+       * Cuántas filas del padrón quedaron completadas con datos de esta planilla.
        */
       aplazosPersistidos,
       errores: todosErrores,
