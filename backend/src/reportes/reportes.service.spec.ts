@@ -1,7 +1,9 @@
+import * as ExcelJS from 'exceljs';
 import {
   separarNombre,
   formatoFecha,
   cargaHorariaModulos,
+  ReportesService,
 } from './reportes.service';
 
 /**
@@ -64,5 +66,63 @@ describe('cargaHorariaModulos', () => {
   it('sin módulos usa el default de un módulo', () => {
     expect(cargaHorariaModulos(null)).toBe('6hs');
     expect(cargaHorariaModulos(0)).toBe('6hs');
+  });
+});
+
+describe('generarReporteRanking', () => {
+  it('escribe posición, datos académicos y prioridades', async () => {
+    const prisma = {
+      resultadoRanking: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            posicion: 1,
+            puntajeTotal: 17.24,
+            bonusAntecedentes: 0.5,
+            habilitado: true,
+            motivoInhabilitacion: null,
+            padronId: 'p1',
+            padron: {
+              dni: '35450612',
+              legajo: '17.891',
+              nombreCompleto: '"Alvarez hayes, Fernando"',
+              especialidadCodigo: 8,
+              promedio: 7.8,
+              aprobadas: 43,
+              regularizadas: 44,
+              aplazos: 0,
+            },
+          },
+        ]),
+      },
+      postulacion: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            padronId: 'p1',
+            ordenPreferencia: 1,
+            propuesta: { idExterno: '1103171813528515' },
+          },
+        ]),
+      },
+    } as any;
+    const storage = {
+      uploadBuffer: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    const buffer = await new ReportesService(
+      prisma,
+      storage,
+    ).generarReporteRanking('c1');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(
+      buffer as unknown as Parameters<typeof workbook.xlsx.load>[0],
+    );
+    const ws = workbook.worksheets[0];
+
+    expect(ws.getRow(1).getCell(1).value).toBe('Posición');
+    expect(ws.getRow(2).getCell(2).value).toBe('35450612');
+    expect(ws.getRow(2).getCell(3).value).toBe('Alvarez hayes');
+    expect(ws.getRow(2).getCell(13).value).toBe(17.24);
+    expect(ws.getRow(2).getCell(16).value).toBe('1103171813528515 - prio: 1');
+    expect(storage.uploadBuffer).toHaveBeenCalled();
   });
 });

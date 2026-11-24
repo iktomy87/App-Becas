@@ -13,6 +13,7 @@ export function RankingPage() {
   const [convocatoria, setConvocatoria] = useState<Convocatoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   const [resultados, setResultados] = useState<ResultadoRanking[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -124,6 +125,18 @@ export function RankingPage() {
     }
   };
 
+  const handleDescargar = async () => {
+    if (!convocatoriaId) return;
+    setDescargando(true);
+    try {
+      await rankingService.descargarPlanilla(convocatoriaId);
+    } catch (err) {
+      alert(`Error al descargar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDescargando(false);
+    }
+  };
+
   // ── Skeleton ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -188,8 +201,12 @@ export function RankingPage() {
           <button className="btn outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || !convocatoriaId}>
             <span className="ic">⭱</span> {uploading ? 'Calculando...' : 'Calcular con antecedentes'}
           </button>
-          <button className="btn outline">
-            <span className="ic">⭳</span> Descargar planilla
+          <button
+            className="btn outline"
+            onClick={() => void handleDescargar()}
+            disabled={descargando || !convocatoriaId}
+          >
+            <span className="ic">⭳</span> {descargando ? 'Descargando...' : 'Descargar planilla'}
           </button>
         </div>
       </div>

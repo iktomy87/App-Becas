@@ -27,4 +27,24 @@ export class ReportesController {
     res.setHeader('Cache-Control', 'no-store');
     res.send(buffer);
   }
+
+  @Get('ranking')
+  @ApiOperation({ summary: 'Descargar planilla de ranking en Excel' })
+  async descargarRanking(
+    @Param('convocatoriaId') convocatoriaId: string,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.service.generarReporteRanking(convocatoriaId);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="reporte_ranking.xlsx"',
+    );
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(buffer);
+  }
 }

@@ -1,4 +1,5 @@
 import { http } from './http';
+import { API_BASE_URL } from './config';
 import type { RankingPage, ResultadoRanking } from './types';
 
 export const rankingService = {
@@ -37,5 +38,28 @@ export const rankingService = {
     http.get<ResultadoRanking>(
       `/convocatorias/${convocatoriaId}/ranking/estudiante/${dni}`,
     ),
+
+  /** GET /convocatorias/:convocatoriaId/reportes/ranking → descarga Excel */
+  descargarPlanilla: async (convocatoriaId: string) => {
+    const res = await fetch(
+      `${API_BASE_URL}/convocatorias/${convocatoriaId}/reportes/ranking`,
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(
+        body?.message ?? `No se pudo generar la planilla (${res.status})`,
+      );
+    }
+
+    const blob = await res.blob();
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = 'reporte_ranking.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
+  },
 };
 
